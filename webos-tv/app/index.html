@@ -1,0 +1,2006 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101319">
+  <title>網頁助理</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Arial, "Noto Sans CJK TC", sans-serif;
+      color: #f5f5f7;
+      background: #101319;
+      --panel: #1b202a;
+      --muted: #a5adbb;
+      --accent: #9be1cd;
+      --focus: #ffe18a;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; margin: 0; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 18% 0%, #283442 0, #101319 58%);
+    }
+    button, input { font: inherit; }
+    button { color: inherit; cursor: pointer; }
+    button:focus, input:focus { outline: 4px solid var(--focus); outline-offset: 4px; }
+
+    .shell { width: 100%; max-width: 1600px; min-height: 100vh; margin: 0 auto; padding: 44px 72px 34px; }
+    header { display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; }
+    .brand > div + div { margin-left: 16px; }
+    .brand-mark {
+      display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 16px;
+      color: #15201e; background: var(--accent); font-size: 28px; font-weight: 800;
+    }
+    .brand-name { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: .03em; }
+    .brand-sub { margin: 5px 0 0; color: var(--muted); font-size: 15px; }
+    .header-tools { display: flex; align-items: center; }
+    .header-tools > * + * { margin-left: 14px; }
+    .device-label { color: var(--muted); font-size: 15px; }
+    .quiet-button, .primary-button, .secondary-button, .danger-button {
+      border: 0; border-radius: 12px; padding: 13px 19px; font-weight: 700;
+    }
+    .quiet-button { background: #292f3a; font-size: 17px; }
+    .primary-button { color: #111815; background: var(--accent); font-size: 19px; }
+    .secondary-button { background: #303744; font-size: 16px; }
+    .danger-button { background: #5a3038; font-size: 15px; }
+
+    .intro { margin: 55px 0 22px; }
+    .intro h1 { margin: 0; font-size: 58px; font-weight: 700; letter-spacing: -.03em; }
+    .intro p { margin: 12px 0 0; color: var(--muted); font-size: 21px; }
+
+    .search-row {
+      display: flex; align-items: center; max-width: 1110px; padding: 13px;
+      border: 1px solid #353c49; border-radius: 18px; background: rgba(27, 32, 42, .96);
+    }
+    .search-row > * + * { margin-left: 14px; }
+    .search-icon { padding-left: 12px; color: var(--accent); font-size: 27px; }
+    .search-row input {
+      flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff;
+      padding: 14px 8px; font-size: 22px;
+    }
+    .search-row input:focus { outline-offset: -2px; }
+    .search-row input::placeholder { color: #929bab; }
+
+    .section-heading { display: flex; align-items: center; justify-content: space-between; margin: 42px 0 19px; }
+    .section-heading h2 { margin: 0; font-size: 23px; font-weight: 700; }
+    .section-note { color: var(--muted); font-size: 15px; }
+    .site-grid { display: flex; flex-wrap: wrap; margin: -9px; }
+    .site-card {
+      width: calc(25% - 18px); flex: 0 0 calc(25% - 18px); min-width: 190px; margin: 9px; min-height: 191px; padding: 18px; border: 1px solid #313845; border-radius: 17px;
+      background: linear-gradient(145deg, #202631, #181d25); transition: transform .12s ease, border-color .12s ease;
+    }
+    .site-card:focus-within { border-color: var(--focus); }
+    .site-open {
+      display: flex; width: 100%; min-height: 116px; align-items: center; text-align: left;
+      border: 0; border-radius: 12px; padding: 12px; background: transparent;
+    }
+    .site-open > * + * { margin-left: 18px; }
+    .site-open:focus { outline-offset: 1px; }
+    .site-icon { display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; flex: 0 0 60px; border-radius: 16px; background: #303946; font-size: 29px; }
+    .site-copy { min-width: 0; }
+    .site-copy strong { display: block; font-size: 21px; overflow-wrap: anywhere; }
+    .site-copy span { display: block; max-width: 220px; margin-top: 8px; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .site-actions { display: flex; justify-content: flex-end; padding-top: 6px; }
+    .site-actions > * + * { margin-left: 8px; }
+    .site-actions button { padding: 9px 12px; border: 0; border-radius: 9px; background: #303744; font-size: 14px; }
+    .add-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; width: calc(25% - 18px); flex: 0 0 calc(25% - 18px); min-width: 190px; margin: 9px; min-height: 191px; padding: 18px; border: 2px dashed #52606a;
+      border-radius: 17px; background: rgba(20, 26, 34, .6); color: var(--accent); font-size: 20px; font-weight: 700;
+    }
+    .add-card span { display: block; margin-bottom: 10px; font-size: 35px; text-align: center; }
+    .empty { width: calc(100% - 18px); flex: 1 0 calc(100% - 18px); margin: 9px; padding: 26px; border-radius: 14px; background: var(--panel); color: var(--muted); font-size: 18px; }
+    footer { margin-top: 36px; color: #818a99; font-size: 14px; }
+
+    .overlay[hidden] { display: none; }
+    .overlay { position: fixed; z-index: 10; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 28px; background: rgba(4, 7, 11, .82); }
+    .dialog { width: 96vw; max-width: 720px; max-height: 90vh; overflow: auto; padding: 30px; border: 1px solid #3b4350; border-radius: 20px; background: #1a2029; box-shadow: 0 24px 90px rgba(0, 0, 0, .55); }
+    .dialog h2 { margin: 0 0 8px; font-size: 30px; }
+    .dialog-intro { margin: 0 0 24px; color: var(--muted); font-size: 17px; line-height: 1.55; }
+    .field { display: block; margin: 18px 0; color: #dce1e8; font-size: 16px; }
+    .field input { display: block; width: 100%; margin-top: 9px; border: 1px solid #434c59; border-radius: 11px; padding: 14px 15px; background: #10151c; color: #fff; font-size: 20px; }
+    .dialog-actions { display: flex; justify-content: flex-end; margin-top: 25px; }
+    .dialog-actions > * + * { margin-left: 12px; }
+    .help-list { margin: 0; padding-left: 25px; color: #e0e4ea; font-size: 18px; line-height: 1.7; }
+    .help-list li { padding-left: 5px; margin: 10px 0; }
+    .help-footnote { margin: 20px 0 0; padding: 14px 16px; border-radius: 12px; background: #272e38; color: var(--muted); font-size: 15px; line-height: 1.55; }
+    .key-settings { margin-top: 24px; padding: 20px; border: 1px solid #39424f; border-radius: 14px; background: #151a22; }
+    .key-settings h3 { margin: 0 0 8px; font-size: 21px; }
+    .key-settings p { color: var(--muted); font-size: 15px; line-height: 1.55; }
+    .key-row { display: flex; align-items: stretch; }
+    .key-row > * + * { margin-left: 10px; }
+    .key-row input { flex: 1; min-width: 0; }
+    .key-row button { align-self: end; min-height: 54px; }
+    .key-status { min-height: 24px; margin: 8px 0 0; color: var(--accent); font-size: 15px; }
+    .controller-status { min-height: 24px; margin: 10px 0 0; color: var(--accent); font-size: 16px; }
+    .controller-note { margin: 12px 0 0; padding: 14px 16px; border-radius: 12px; background: #272e38; color: var(--muted); font-size: 15px; line-height: 1.55; }
+    .controller-pair { display: flex; align-items: center; margin: 16px 0 12px; padding: 18px; border: 1px solid #39424f; border-radius: 16px; background: #141922; }
+    .controller-connection-mark { display: flex; flex: 0 0 132px; align-items: center; justify-content: center; width: 132px; height: 132px; border-radius: 24px; background: #243b3b; color: var(--accent); text-align: center; font-size: 23px; font-weight: 800; }
+    .controller-pair-copy { min-width: 0; margin-left: 22px; }
+    .controller-pair-copy h3 { margin: 0 0 10px; font-size: 23px; }
+    .controller-pair-copy p { margin: 8px 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+    .tv-ip-card { display: flex; align-items: center; justify-content: space-between; margin: 14px 0; padding: 16px 18px; border: 1px solid #39424f; border-radius: 14px; background: #141922; }
+    .tv-ip-copy { min-width: 0; }
+    .tv-ip-label { display: block; color: var(--muted); font-size: 14px; }
+    .tv-ip-value { display: block; margin-top: 5px; color: var(--accent); font-size: 21px; overflow-wrap: anywhere; }
+    .tv-ip-status { margin: 5px 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+    .pair-qr-card { display: flex; align-items: center; gap: 24px; margin: 14px 0; padding: 20px; border: 1px solid #39424f; border-radius: 16px; background: #141922; }
+    .pair-qr-card[hidden] { display: none; }
+    .pair-qr-code { display: flex; flex: 0 0 224px; align-items: center; justify-content: center; width: 224px; height: 224px; padding: 8px; border-radius: 12px; background: white; }
+    .pair-qr-code svg { display: block; width: 100%; height: 100%; }
+    .pair-qr-copy h3 { margin: 0 0 10px; font-size: 22px; }
+    .pair-qr-copy p { margin: 8px 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+    @media (max-width: 760px) { .tv-ip-card { align-items: flex-start; flex-direction: column; } .tv-ip-card button { margin-top: 12px; } }
+    @media (max-width: 760px) { .controller-pair { flex-direction: column; text-align: center; } .controller-pair-copy { margin: 18px 0 0; } }
+    .chat-dialog { display: flex; flex-direction: column; width: 96vw; max-width: 1120px; height: 92vh; max-height: 850px; padding: 26px; overflow: hidden; }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; }
+    .chat-header > * + * { margin-left: 16px; }
+    .chat-header h2 { margin: 0; }
+    .chat-help { margin: 8px 0 18px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+    .chat-status { min-height: 24px; margin: 0 0 12px; color: var(--accent); font-size: 15px; }
+    .chat-log { flex: 1; min-height: 180px; overflow-y: auto; padding: 16px; border: 1px solid #323b48; border-radius: 14px; background: #10151c; }
+    .chat-message { display: flex; flex-direction: column; align-items: flex-start; margin: 0 0 16px; }
+    .chat-message-user { align-items: flex-end; }
+    .chat-sender { margin: 0 0 5px; color: var(--muted); font-size: 13px; }
+    .chat-bubble { max-width: 82%; padding: 13px 16px; border-radius: 14px; background: #252d38; color: #f5f5f7; font-size: 19px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .chat-message-user .chat-bubble { background: #27443d; }
+    .chat-entry { display: flex; align-items: center; margin-top: 16px; }
+    .chat-entry > * + * { margin-left: 12px; }
+    .chat-entry input { flex: 1; min-width: 0; border: 1px solid #434c59; border-radius: 11px; padding: 15px; background: #10151c; color: #fff; font-size: 20px; }
+    .chat-entry input::placeholder { color: #929bab; }
+    .chat-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+    .chat-footer-note { color: var(--muted); font-size: 14px; }
+    .chat-actions { display: flex; }
+    .chat-actions > * + * { margin-left: 10px; }
+    .chat-actions button { padding: 11px 13px; font-size: 14px; white-space: nowrap; }
+    .chat-actions .voice-mode-button { color: #111815; background: var(--accent); }
+    .chat-actions .voice-mode-button[aria-pressed="true"] { color: #fff; background: #5a3038; }
+    .media-overlay { z-index: 30; padding: 0; overflow: hidden; background: #000; }
+    .media-player-dialog { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 0; overflow: hidden; border: 0; border-radius: 0; background: #000; box-shadow: none; }
+    .media-player-head { position: absolute; z-index: 2; top: 0; right: 0; left: 0; display: flex; align-items: flex-start; justify-content: space-between; margin: 0; padding: 28px 40px; background: linear-gradient(to bottom, rgba(0,0,0,.82), rgba(0,0,0,0)); }
+    .media-player-head h2 { margin: 0; font-size: 23px; }
+    .media-player-status { min-height: 22px; margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .media-player-video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: block; width: 100%; height: 100%; min-height: 0; background: #000; object-fit: contain; }
+    .media-player-foot { position: absolute; z-index: 2; top: 105px; right: 40px; left: 40px; display: flex; align-items: center; justify-content: space-between; margin: 0; }
+    .media-player-foot span { color: var(--muted); font-size: 14px; }
+    .toast { position: fixed; z-index: 20; right: 40px; bottom: 32px; max-width: 560px; padding: 16px 20px; border-radius: 12px; background: #edf3ef; color: #17201d; font-size: 17px; box-shadow: 0 12px 36px #0008; }
+    .toast[hidden] { display: none; }
+
+    @media (max-width: 1050px) {
+      .shell { padding: 30px; }
+      .intro h1 { font-size: 44px; }
+      .site-card, .add-card { width: calc(33.333% - 18px); flex-basis: calc(33.333% - 18px); }
+    }
+    @media (max-width: 720px) {
+      .shell { padding: 20px; }
+      .intro h1 { font-size: 38px; }
+      .site-grid { margin: -6px; }
+      .site-card, .add-card { width: calc(50% - 12px); flex-basis: calc(50% - 12px); min-width: 130px; margin: 6px; }
+      .site-card { padding: 10px; }
+      .intro { margin-top: 34px; }
+      .device-label { display: none; }
+      .section-note { display: none; }
+      .search-row > * + * { margin-left: 5px; }
+      .search-row input { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">W</div>
+        <div>
+          <p class="brand-name">網頁中心</p>
+          <p class="brand-sub">你的電視網站入口</p>
+        </div>
+      </div>
+      <div class="header-tools">
+        <span class="device-label">LG webOS 電視</span>
+        <button class="quiet-button" id="assistantButton" type="button">AI 助理</button>
+        <button class="quiet-button" id="phoneControllerButton" type="button">手機控制</button>
+        <button class="quiet-button" id="settingsButton" type="button">設定</button>
+      </div>
+    </header>
+
+    <section class="intro" aria-labelledby="pageTitle">
+      <h1 id="pageTitle">想看什麼網站？</h1>
+      <p>用收藏或輸入網址交給 LG 瀏覽器開啟，也能用手機或遙控器請 Gemini 幫你換頁。</p>
+    </section>
+
+    <form class="search-row" id="openForm">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <input id="addressInput" type="text" autocomplete="off" placeholder="輸入網址或搜尋內容" aria-label="輸入網址或搜尋內容">
+      <button class="primary-button" type="submit">開啟</button>
+    </form>
+
+    <div class="section-heading">
+      <h2>我的網站</h2>
+      <span class="section-note">收藏保存在這台電視</span>
+    </div>
+    <main class="site-grid" id="siteGrid" aria-label="已收藏網站"></main>
+    <footer>網站會在 LG 瀏覽器開啟；回到這個 App 後可繼續使用 AI 與手機控制。</footer>
+  </div>
+
+  <section class="overlay" id="siteDialogOverlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="siteDialogTitle">
+      <h2 id="siteDialogTitle">新增網站</h2>
+      <p class="dialog-intro">加入你常用的網站，之後可從首頁直接開啟。</p>
+      <form id="siteForm">
+        <label class="field">顯示名稱
+          <input id="siteName" type="text" maxlength="40" autocomplete="off" required placeholder="例如：新聞">
+        </label>
+        <label class="field">網站網址
+          <input id="siteUrl" type="text" maxlength="500" autocomplete="off" required placeholder="https://example.com">
+        </label>
+        <div class="dialog-actions">
+          <button class="secondary-button" type="button" data-close-dialog>取消</button>
+          <button class="primary-button" type="submit">儲存網站</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="overlay" id="settingsDialogOverlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Gemini 與瀏覽器設定</h2>
+      <div class="key-settings">
+        <h3>Gemini Live API 金鑰</h3>
+        <p>輸入 Google AI Studio 的 Gemini API 金鑰。金鑰會保存在這台電視的 App 儲存區，手機不必連線。</p>
+        <form id="geminiKeyForm">
+          <label class="field">API 金鑰
+            <div class="key-row">
+              <input id="geminiKeyInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Gemini API 金鑰">
+              <button class="secondary-button" id="toggleKeyVisibility" type="button">顯示</button>
+            </div>
+          </label>
+          <div class="dialog-actions">
+            <button class="danger-button" id="clearGeminiKeyButton" type="button">清除金鑰</button>
+            <button class="primary-button" type="submit">儲存金鑰</button>
+          </div>
+          <p class="key-status" id="geminiKeyStatus" role="status"></p>
+        </form>
+        <p class="help-footnote">這是直接連 Gemini 的個人電視設定。Google 提醒用戶端金鑰可能被取出；請勿把含有個人金鑰的 App 分享或公開。</p>
+      </div>
+      <p class="dialog-intro">所有網站都會交給 LG 瀏覽器開啟。</p>
+      <ol class="help-list">
+        <li>需要調整瀏覽器行為時，請進入 LG 瀏覽器的「設定」。</li>
+        <li>需要時打開「彈出視窗阻擋／Pop-up Blocker」。</li>
+        <li>此選項只控制瀏覽器是否阻擋彈出視窗。</li>
+      </ol>
+      <p class="help-footnote">LG 2018 webOS 世代的瀏覽器手冊列出彈出視窗阻擋，沒有列出一般網頁廣告阻擋。因此頁面內廣告、YouTube 或串流影片廣告仍可能出現。</p>
+      <div class="dialog-actions">
+        <button class="secondary-button" id="manageSitesButton" type="button">新增網站</button>
+        <button class="primary-button" type="button" data-close-dialog>完成</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="overlay" id="phoneControllerOverlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="phoneControllerTitle">
+      <h2 id="phoneControllerTitle">手機控制連線</h2>
+      <p class="dialog-intro">手機 companion APK 會提供控制服務，電視 App 只需主動連回手機。兩台裝置請連上同一個 Wi-Fi。</p>
+      <div class="tv-ip-card">
+        <div class="tv-ip-copy">
+          <span class="tv-ip-label">電視區網 IP</span>
+          <strong class="tv-ip-value" id="tvNetworkIp" aria-live="polite">尚未查詢</strong>
+          <p class="tv-ip-status" id="tvNetworkIpStatus" role="status">打開手機控制時會自動查詢。</p>
+        </div>
+        <button class="secondary-button" id="refreshTvNetworkIpButton" type="button">重新查詢</button>
+      </div>
+      <div class="pair-qr-card" id="tvPairQrCard" hidden>
+        <div class="pair-qr-code" id="tvPairQrCode" aria-label="電視配對 QR code"></div>
+        <div class="pair-qr-copy">
+          <h3>用手機掃描即可連線</h3>
+          <p>在手機 companion APK 首頁按「掃描電視 QR 並連線」，掃描這個 QR code。</p>
+          <p>手機和電視要連上同一個 Wi‑Fi。第一次連線時，請在電視上允許配對。</p>
+          <p class="tv-ip-status" id="tvPairQrStatus" role="status"></p>
+        </div>
+      </div>
+      <div class="controller-pair">
+        <div class="controller-connection-mark" id="controllerConnectionMark" aria-hidden="true">手機 ↔ 電視</div>
+        <div class="controller-pair-copy">
+          <h3>透過 companion APK 連線</h3>
+          <p>在手機 companion APK 掃描上方 QR code，APK 會自動設定電視並建立區網連線。</p>
+          <p class="controller-status" id="controllerStatus" role="status">等待手機 companion APK 連線。</p>
+        </div>
+      </div>
+      <button class="secondary-button" id="controllerReconnectButton" type="button">重新連線手機</button>
+      <p class="controller-note">不需要 Termux，也不需要讓電視開伺服器。手機 APK 必須保持開啟；如果路由器有訪客網路或裝置隔離，請讓手機和電視改連一般同一個 Wi-Fi。</p>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" data-close-dialog>完成</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="overlay" id="assistantDialogOverlay" hidden>
+    <div class="dialog chat-dialog" role="dialog" aria-modal="true" aria-labelledby="assistantTitle">
+      <div class="chat-header">
+        <h2 id="assistantTitle">Gemini 網頁助理</h2>
+        <button class="secondary-button" id="closeAssistantButton" type="button" aria-label="關閉 AI 助理">關閉</button>
+      </div>
+      <p class="chat-help">說話請按「開始語音對話」；停頓 2 秒會自動送出。也可以在下方輸入文字後按「送出」。</p>
+      <p class="chat-status" id="chatStatus" role="status">尚未連線</p>
+      <div class="chat-log" id="chatLog" aria-live="polite" aria-label="對話內容"></div>
+      <form class="chat-entry" id="chatForm">
+        <input id="chatInput" type="text" autocomplete="off" aria-label="輸入訊息給 Gemini" placeholder="輸入訊息…">
+        <button class="primary-button" id="sendChatButton" type="submit">送出</button>
+      </form>
+      <div class="chat-footer">
+        <span class="chat-footer-note">Gemini 回覆會顯示並嘗試朗讀；語音對話可隨時停止。</span>
+        <div class="chat-actions">
+          <button class="secondary-button" id="voiceLanguageButton" type="button" aria-label="切換語音辨識語言">辨識：中文</button>
+          <button class="secondary-button voice-mode-button" id="continuousVoiceButton" type="button" aria-pressed="false">開始語音對話</button>
+          <button class="secondary-button" id="assistantSettingsButton" type="button">金鑰設定</button>
+          <button class="secondary-button" id="clearConversationButton" type="button">清除對話</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="overlay media-overlay" id="mediaPlayerOverlay" hidden>
+    <div class="dialog media-player-dialog" role="dialog" aria-modal="true" aria-labelledby="mediaPlayerTitle">
+      <div class="media-player-head">
+        <div>
+          <h2 id="mediaPlayerTitle">電視影片播放</h2>
+          <p class="media-player-status" id="mediaPlayerStatus" role="status">準備播放</p>
+        </div>
+        <button class="secondary-button" id="mediaPlayerClose" type="button">關閉</button>
+      </div>
+      <video class="media-player-video" id="mediaPlayerVideo" controls autoplay playsinline></video>
+      <div class="media-player-foot">
+        <button class="primary-button" id="mediaPlayerToggle" type="button">播放／暫停</button>
+        <span>使用遙控器操作播放器；按返回鍵離開</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="./webOSTVjs-1.2.13/webOSTV.js"></script>
+  <script src="./webOSTVjs-1.2.13/webOSTV-dev.js"></script>
+  <script src="./qrcode-generator.js"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var STORAGE_KEY = 'web-tv-sites-v1';
+      var SITE_CONFIG_REVISION_KEY = 'web-tv-sites-config-revision';
+      var GEMINI_KEY_STORAGE = 'web-tv-gemini-api-key-v1';
+      var VOICE_LANGUAGE_STORAGE = 'web-tv-voice-language-v1';
+      var GEMINI_MODEL = 'gemini-3.8-live';
+      var SITE_CONFIG_REVISION = 1;
+      var DEFAULT_SITES = [
+        { id: 'google', name: 'Google 搜尋', url: 'https://www.google.com/', icon: '⌕' },
+        { id: 'youtube', name: 'YouTube', url: 'https://www.youtube.com/', icon: '▶' },
+        { id: 'wikipedia', name: '維基百科', url: 'https://zh.wikipedia.org/', icon: '文' }
+      ];
+      var sites = readSites();
+      var editingId = null;
+      var activeDialog = null;
+      var toastTimer = null;
+      var liveSocket = null;
+      var controllerSocket = null;
+      var controllerReconnectTimer = null;
+      var controllerConfig = { url: '', code: '' };
+      var controllerPhoneOnline = false;
+      var phoneAudioPending = false;
+      var phoneAudioActive = false;
+      var phoneAudioTurnInFlight = false;
+      var phoneAudioTranscript = '';
+      var phoneAudioUserBubble = null;
+      var liveReady = false;
+      var liveSetupTimer = null;
+      var chatResponseTimer = null;
+      var speechRecognition = null;
+      var continuousVoiceEnabled = false;
+      var continuousSilenceTimer = null;
+      var continuousRestartTimer = null;
+      var autoSendAfterVoiceEnd = false;
+      var VOICE_SILENCE_MS = 2000;
+      var voiceRecognitionLanguage = 'zh-TW';
+      var queuedPrompt = null;
+      var pendingUserTurn = null;
+      var activeReplyBubble = null;
+      var activeReplyText = '';
+      var pendingLaunch = null;
+      var chatBusy = false;
+      var lastPhoneMediaUrl = '';
+      var lastPhoneMediaAt = 0;
+      var conversationTurns = [];
+      var audioContext = null;
+      var audioNextStart = 0;
+
+      var grid = document.getElementById('siteGrid');
+      var addressInput = document.getElementById('addressInput');
+      var siteOverlay = document.getElementById('siteDialogOverlay');
+      var settingsOverlay = document.getElementById('settingsDialogOverlay');
+      var assistantOverlay = document.getElementById('assistantDialogOverlay');
+      var chatLog = document.getElementById('chatLog');
+      var chatInput = document.getElementById('chatInput');
+      var chatStatus = document.getElementById('chatStatus');
+      var sendChatButton = document.getElementById('sendChatButton');
+      var voiceLanguageButton = document.getElementById('voiceLanguageButton');
+      var continuousVoiceButton = document.getElementById('continuousVoiceButton');
+      var geminiKeyInput = document.getElementById('geminiKeyInput');
+      var geminiKeyStatus = document.getElementById('geminiKeyStatus');
+      var toast = document.getElementById('toast');
+      var controllerStatus = document.getElementById('controllerStatus');
+      var controllerConnectionMark = document.getElementById('controllerConnectionMark');
+      var tvNetworkIp = document.getElementById('tvNetworkIp');
+      var tvNetworkIpStatus = document.getElementById('tvNetworkIpStatus');
+      var refreshTvNetworkIpButton = document.getElementById('refreshTvNetworkIpButton');
+      var tvPairQrCard = document.getElementById('tvPairQrCard');
+      var tvPairQrCode = document.getElementById('tvPairQrCode');
+      var tvPairQrStatus = document.getElementById('tvPairQrStatus');
+      var mediaPlayerOverlay = document.getElementById('mediaPlayerOverlay');
+      var mediaPlayerVideo = document.getElementById('mediaPlayerVideo');
+      var mediaPlayerTitle = document.getElementById('mediaPlayerTitle');
+      var mediaPlayerStatus = document.getElementById('mediaPlayerStatus');
+      var mediaPlayerToggle = document.getElementById('mediaPlayerToggle');
+
+      function readSites() {
+        try {
+          var saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (Array.isArray(saved)) {
+            saved = saved.filter(function (site) {
+              return site && typeof site.name === 'string' && typeof site.url === 'string';
+            });
+            var previousRevision = Number(localStorage.getItem(SITE_CONFIG_REVISION_KEY) || 0);
+            if (previousRevision < SITE_CONFIG_REVISION) {
+              DEFAULT_SITES.forEach(function (site) {
+                if (!saved.some(function (item) { return item.id === site.id; })) saved.push(site);
+              });
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+              localStorage.setItem(SITE_CONFIG_REVISION_KEY, String(SITE_CONFIG_REVISION));
+            }
+            return saved;
+          }
+        } catch (error) {}
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_SITES));
+        localStorage.setItem(SITE_CONFIG_REVISION_KEY, String(SITE_CONFIG_REVISION));
+        return DEFAULT_SITES.slice();
+      }
+
+      function saveSites() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sites));
+      }
+
+      function setControllerStatus(message) {
+        controllerStatus.textContent = message;
+      }
+
+      function sendControllerPacket(packet) {
+        if (!controllerSocket || controllerSocket.readyState !== WebSocket.OPEN) return false;
+        try {
+          controllerSocket.send(JSON.stringify(packet));
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function controllerEndpoint(raw) {
+        try {
+          var parsed = new URL(String(raw || '').trim());
+          if ((parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') || !parsed.hostname || parsed.username || parsed.password) return null;
+          if (parsed.pathname === '/' || !parsed.pathname) parsed.pathname = '/ws';
+          parsed.search = '';
+          parsed.hash = '';
+          return parsed.href;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function updateControllerStatus() {
+        if (!controllerConfig.url || !controllerConfig.code) {
+          setControllerStatus('請在手機 APK 設定電視 IP，然後按「手機控制」。');
+        } else if (!controllerSocket || controllerSocket.readyState !== WebSocket.OPEN) {
+          setControllerStatus('正在連接手機 companion…');
+        } else if (controllerPhoneOnline) {
+          setControllerStatus('手機 companion 已連線，可以傳文字、語音或新增網站。');
+        } else {
+          setControllerStatus('已連到手機橋接服務，等待手機控制頁連線。');
+        }
+      }
+
+      function renderControllerConnectionMark() {
+        controllerConnectionMark.textContent = controllerConfig.url ? '手機已設定' : '等待手機 APK';
+      }
+
+      function configurePhoneController(params) {
+        var endpoint = controllerEndpoint(params.controllerUrl || '');
+        var code = String(params.controllerCode || '').trim();
+        if (!endpoint || !/^\d{6}$/.test(code)) {
+          setControllerStatus('手機 APK 傳來的連線資料無效。請重新從 APK 開啟電視 app。');
+          return false;
+        }
+        controllerConfig = { url: endpoint, code: code };
+        renderControllerConnectionMark();
+        connectPhoneController();
+        return true;
+      }
+
+      function scheduleControllerReconnect() {
+        window.clearTimeout(controllerReconnectTimer);
+        if (!controllerConfig.url || !controllerConfig.code) return;
+        controllerReconnectTimer = window.setTimeout(connectPhoneController, 4000);
+      }
+
+      function connectPhoneController() {
+        window.clearTimeout(controllerReconnectTimer);
+        if (!controllerConfig.url || !controllerConfig.code || !window.WebSocket) return;
+        var endpoint = controllerEndpoint(controllerConfig.url);
+        if (!endpoint) {
+          setControllerStatus('位址格式無效，請使用 ws:// 或 wss:// 位址。');
+          return;
+        }
+        if (controllerSocket) {
+          var previous = controllerSocket;
+          controllerSocket = null;
+          try { previous.close(); } catch (error) {}
+        }
+        updateControllerStatus();
+        var socket;
+        try {
+          var separator = endpoint.indexOf('?') === -1 ? '?' : '&';
+          socket = new WebSocket(endpoint + separator + 'role=tv&pin=' + encodeURIComponent(controllerConfig.code));
+          socket.binaryType = 'arraybuffer';
+        } catch (error) {
+          scheduleControllerReconnect();
+          return;
+        }
+        controllerSocket = socket;
+        socket.onopen = function () {
+          if (controllerSocket !== socket) return;
+          updateControllerStatus();
+        };
+        socket.onmessage = function (event) {
+          if (controllerSocket !== socket) return;
+          if (typeof event.data !== 'string') {
+            receivePhoneAudioChunk(event.data, socket);
+            return;
+          }
+          var packet;
+          try { packet = JSON.parse(event.data); } catch (error) { return; }
+          if (packet.type === 'state') {
+            controllerPhoneOnline = !!packet.phoneConnected;
+            updateControllerStatus();
+            return;
+          }
+          if (packet.type === 'add_site') {
+            receiveControllerSite(packet, socket);
+            return;
+          }
+          if (packet.type === 'open_url') {
+            var requestedUrl = String(packet.url || '').trim();
+            var validUrl = requestedUrl ? strictWebUrl(requestedUrl) : '';
+            if (requestedUrl && !validUrl) {
+              acknowledgeControllerText(socket, packet.id, false, '請提供有效的 http 或 https 網址。');
+            } else {
+              if (validUrl) launchUrl(validUrl);
+              acknowledgeControllerText(socket, packet.id, true, validUrl ? '電視已開啟網頁。' : '電視 App 已開啟。');
+            }
+            return;
+          }
+          if (packet.type === 'play_media') {
+            var mediaUrl = safeMediaUrl(packet.mediaUrl || '');
+            if (!mediaUrl) acknowledgeControllerText(socket, packet.id, false, '收到的影片網址無效。');
+            else {
+              openMediaPlayer(mediaUrl, packet.mediaTitle || '');
+              acknowledgeControllerText(socket, packet.id, true, '已把影片交給電視播放。');
+            }
+            return;
+          }
+          if (packet.type === 'send_text') {
+            receiveControllerText(packet, socket);
+            return;
+          }
+          if (packet.type === 'audio_start') {
+            receiveControllerAudioStart(socket);
+            return;
+          }
+          if (packet.type === 'audio_end') {
+            receiveControllerAudioEnd(socket);
+          }
+        };
+        socket.onerror = function () {
+          if (controllerSocket === socket) setControllerStatus('手機 companion 連線失敗；確認同一個 Wi-Fi 後會自動重試。');
+        };
+        socket.onclose = function () {
+          if (controllerSocket !== socket) return;
+          controllerSocket = null;
+          controllerPhoneOnline = false;
+          if (phoneAudioPending || phoneAudioActive) failChat('手機音訊連線中斷，請重新連線後再試。');
+          updateControllerStatus();
+          scheduleControllerReconnect();
+        };
+      }
+
+      function acknowledgeControllerText(socket, id, accepted, message) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
+        try {
+          socket.send(JSON.stringify({ type: 'ack', id: id, accepted: accepted, message: message || '' }));
+        } catch (error) {}
+      }
+
+      function receiveControllerSite(packet, socket) {
+        var id = String(packet.id || '').slice(0, 80);
+        var name = String(packet.name || '').trim();
+        var rawUrl = String(packet.url || '').trim();
+        var url = strictWebUrl(rawUrl);
+        if (!id || !name || name.length > 40 || rawUrl.length > 500 || !url) {
+          acknowledgeControllerText(socket, id, false, '請提供網站名稱和有效的 http 或 https 網址。');
+          return;
+        }
+
+        var existing = null;
+        for (var i = 0; i < sites.length; i++) {
+          if (sites[i].url === url) { existing = sites[i]; break; }
+        }
+        if (existing) {
+          if (existing.name !== name) {
+            var oldName = existing.name;
+            existing.name = name;
+            try { saveSites(); }
+            catch (error) {
+              existing.name = oldName;
+              acknowledgeControllerText(socket, id, false, '電視無法儲存網站，請確認儲存空間。');
+              return;
+            }
+            renderSites();
+            acknowledgeControllerText(socket, id, true, '網站已存在，並更新了收藏名稱。');
+          } else {
+            acknowledgeControllerText(socket, id, true, '這個網站已在電視收藏清單中。');
+          }
+          return;
+        }
+
+        var site = { id: 'site-phone-' + Date.now(), name: name, url: url, icon: '↗' };
+        sites.push(site);
+        try { saveSites(); }
+        catch (error) {
+          sites.pop();
+          acknowledgeControllerText(socket, id, false, '電視無法儲存網站，請確認儲存空間。');
+          return;
+        }
+        renderSites();
+        acknowledgeControllerText(socket, id, true, '「' + name + '」已加入電視網站清單。');
+      }
+
+      function receiveControllerAudioStart(socket) {
+        if (controllerSocket !== socket) return;
+        if (!getGeminiKey()) {
+          sendControllerPacket({ type: 'audio_error', message: '請先在電視 App 設定 Gemini API 金鑰。' });
+          return;
+        }
+        if (chatBusy || phoneAudioPending || phoneAudioActive || phoneAudioTurnInFlight) {
+          sendControllerPacket({ type: 'audio_error', message: '電視上的 Gemini 正在處理其他訊息，請稍後再試。' });
+          return;
+        }
+        stopContinuousVoiceMode();
+        openAssistant();
+        createAudioContext();
+        phoneAudioPending = true;
+        phoneAudioTurnInFlight = true;
+        phoneAudioTranscript = '';
+        phoneAudioUserBubble = appendChatMessage('手機語音輸入中…', 'user');
+        pendingUserTurn = { role: 'user', parts: [{ text: '手機語音輸入' }] };
+        activeReplyText = '';
+        activeReplyBubble = appendChatMessage('…', 'assistant');
+        pendingLaunch = null;
+        setChatBusy(true);
+        setChatStatus('正在準備手機音訊連線…');
+        if (liveReady) beginPhoneAudioInput(liveSocket);
+        else if (!liveSocket) connectLive();
+        else setChatStatus('Gemini Live 正在連線，請稍候…');
+      }
+
+      function beginPhoneAudioInput(socket) {
+        if (!phoneAudioPending || !liveReady || !socket || socket !== liveSocket) return;
+        try {
+          socket.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+        } catch (error) {
+          failChat('無法開始 Gemini 音訊輸入。', socket);
+          return;
+        }
+        phoneAudioPending = false;
+        phoneAudioActive = true;
+        if (!sendControllerPacket({ type: 'audio_ready' })) {
+          try { socket.send(JSON.stringify({ realtimeInput: { activityEnd: {} } })); } catch (error) {}
+          failChat('手機連線中斷，無法開始語音傳送。', socket);
+          return;
+        }
+        setChatStatus('正在接收手機語音…說完後在手機按「完成語音並送出」。');
+      }
+
+      function receiveControllerAudioEnd(socket) {
+        if (controllerSocket !== socket) return;
+        if (phoneAudioPending) {
+          phoneAudioPending = false;
+          phoneAudioTurnInFlight = false;
+          phoneAudioTranscript = '';
+          phoneAudioUserBubble = null;
+          pendingUserTurn = null;
+          if (activeReplyBubble && !activeReplyText) activeReplyBubble.textContent = '語音輸入已取消。';
+          activeReplyBubble = null;
+          activeReplyText = '';
+          setChatBusy(false);
+          setChatStatus('語音輸入已取消。');
+          sendControllerPacket({ type: 'audio_done' });
+          return;
+        }
+        if (!phoneAudioActive) return;
+        phoneAudioActive = false;
+        if (!liveReady || !liveSocket) {
+          failChat('Gemini 音訊連線已中斷，請重新說一次。');
+          return;
+        }
+        try {
+          liveSocket.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
+          setChatStatus('語音已送出，Gemini 正在回覆…');
+          window.clearTimeout(chatResponseTimer);
+          chatResponseTimer = window.setTimeout(function () {
+            if (liveSocket && chatBusy) failChat('Gemini 等待逾時，請確認 API 額度和網路後再試。', liveSocket);
+          }, 60000);
+        } catch (error) {
+          failChat('無法結束 Gemini 音訊輸入。', liveSocket);
+        }
+      }
+
+      function phoneAudioBytesToBase64(buffer) {
+        var bytes = new Uint8Array(buffer);
+        var binary = '';
+        for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return window.btoa(binary);
+      }
+
+      function sendPhoneAudioBytes(buffer, socket) {
+        if (controllerSocket !== socket || !phoneAudioActive || !liveReady || !liveSocket || liveSocket.readyState !== WebSocket.OPEN) return;
+        try {
+          liveSocket.send(JSON.stringify({
+            realtimeInput: {
+              audio: {
+                mimeType: 'audio/pcm;rate=16000',
+                data: phoneAudioBytesToBase64(buffer)
+              }
+            }
+          }));
+        } catch (error) {
+          failChat('手機音訊傳送失敗，請重新開始。', liveSocket);
+        }
+      }
+
+      function receivePhoneAudioChunk(data, socket) {
+        if (!phoneAudioActive) return;
+        if (data instanceof ArrayBuffer) {
+          sendPhoneAudioBytes(data, socket);
+          return;
+        }
+        if (window.Blob && data instanceof Blob && window.FileReader) {
+          var reader = new FileReader();
+          reader.onload = function () { sendPhoneAudioBytes(reader.result, socket); };
+          reader.onerror = function () { failChat('讀取手機音訊失敗。', liveSocket); };
+          try { reader.readAsArrayBuffer(data); }
+          catch (error) { failChat('讀取手機音訊失敗。', liveSocket); }
+        }
+      }
+
+      function receiveControllerText(packet, socket) {
+        var text = String(packet.text || '').trim();
+        if (!text || text.length > 2000) {
+          acknowledgeControllerText(socket, packet.id, false, '訊息是空的或太長。');
+          return;
+        }
+        if (chatBusy) {
+          acknowledgeControllerText(socket, packet.id, false, '電視上的 Gemini 正在回覆，請稍後再送。');
+          return;
+        }
+        openAssistant();
+        if (!getGeminiKey()) {
+          sendChatMessage(text);
+          acknowledgeControllerText(socket, packet.id, false, '請先在電視 App 設定 Gemini API 金鑰。');
+          return;
+        }
+        sendChatMessage(text);
+        acknowledgeControllerText(socket, packet.id, true, '電視已收到；回覆會顯示在電視與手機。');
+      }
+
+      function openPhoneControllerDialog() {
+        renderControllerConnectionMark();
+        updateControllerStatus();
+        refreshTvNetworkIp();
+        showDialog(document.getElementById('phoneControllerOverlay'));
+        if (controllerConfig.url) connectPhoneController();
+        window.setTimeout(function () { document.getElementById('controllerReconnectButton').focus(); }, 50);
+      }
+
+      function renderTvPairQr(host) {
+        tvPairQrCode.textContent = '';
+        tvPairQrCard.hidden = true;
+        if (!host || typeof qrcode !== 'function') {
+          tvPairQrStatus.textContent = '無法產生 QR code，請使用上方顯示的電視 IP 手動設定。';
+          return;
+        }
+        try {
+          var qr = qrcode(0, 'M');
+          qr.addData('lgcompanion://pair?host=' + encodeURIComponent(host) + '&v=1');
+          qr.make();
+          tvPairQrCode.innerHTML = qr.createSvgTag(5, 20, '電視配對 QR code');
+          tvPairQrCard.hidden = false;
+          tvPairQrStatus.textContent = 'QR code 只包含電視區網 IP；不會包含配對密碼或 Gemini 金鑰。';
+        } catch (error) {
+          tvPairQrStatus.textContent = 'QR code 產生失敗，請使用上方顯示的電視 IP 手動設定。';
+        }
+      }
+
+      function isUsableIPv4(value) {
+        var parts = String(value || '').trim().split('.');
+        if (parts.length !== 4) return false;
+        for (var i = 0; i < parts.length; i++) {
+          if (!/^\d{1,3}$/.test(parts[i])) return false;
+          var octet = Number(parts[i]);
+          if (octet < 0 || octet > 255) return false;
+        }
+        return parts.join('.') !== '0.0.0.0' && parts[0] !== '127';
+      }
+
+      function refreshTvNetworkIp() {
+        tvNetworkIp.textContent = '查詢中…';
+        tvNetworkIpStatus.textContent = '正在讀取電視目前的有線與 Wi-Fi 網路位址。';
+        refreshTvNetworkIpButton.disabled = true;
+        if (!window.webOS || !webOS.service || typeof webOS.service.request !== 'function') {
+          tvNetworkIp.textContent = '無法查詢';
+          tvNetworkIpStatus.textContent = '這台電視尚未提供網路查詢服務。';
+          refreshTvNetworkIpButton.disabled = false;
+          return;
+        }
+
+        try {
+          webOS.service.request('luna://com.palm.connectionmanager', {
+            method: 'getStatus',
+            parameters: { subscribe: false },
+            onSuccess: function (response) {
+              var connections = [
+                { label: 'Wi-Fi', value: response && response.wifi },
+                { label: '有線', value: response && response.wired }
+              ];
+              var addresses = [];
+              connections.forEach(function (connection) {
+                var item = connection.value;
+                var address = item && String(item.ipAddress || '').trim();
+                if (item && item.state === 'connected' && isUsableIPv4(address)) {
+                  addresses.push(connection.label + ' ' + address);
+                }
+              });
+              tvNetworkIp.textContent = addresses.length ? addresses.join('　/　') : '目前沒有連線';
+              tvNetworkIpStatus.textContent = addresses.length
+                ? '這是電視目前的區網 IP；路由器重新分配位址後可能會變更。'
+                : '請確認電視已連上 Wi-Fi 或網路線，再重新查詢。';
+              renderTvPairQr(addresses.length ? addresses[0].split(' ').pop() : '');
+              refreshTvNetworkIpButton.disabled = false;
+            },
+            onFailure: function () {
+              tvNetworkIp.textContent = '查詢失敗';
+              tvNetworkIpStatus.textContent = 'webOS 網路查詢服務沒有回應，請稍後重新查詢。';
+              refreshTvNetworkIpButton.disabled = false;
+            }
+          });
+        } catch (error) {
+          tvNetworkIp.textContent = '查詢失敗';
+          tvNetworkIpStatus.textContent = 'webOS 網路查詢服務沒有回應，請稍後重新查詢。';
+          refreshTvNetworkIpButton.disabled = false;
+        }
+      }
+
+      function safeUrl(value) {
+        var raw = String(value || '').trim();
+        if (!raw) return null;
+        var candidate = raw;
+        if (!/^https?:\/\//i.test(candidate)) {
+          if (/^[^\s.]+\.[^\s]+$/.test(candidate) || /^localhost(?::\d+)?(?:\/|$)/i.test(candidate)) {
+            candidate = 'https://' + candidate;
+          } else {
+            return 'https://www.google.com/search?q=' + encodeURIComponent(raw);
+          }
+        }
+        try {
+          var parsed = new URL(candidate);
+          if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+          return parsed.href;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function hostLabel(url) {
+        try { return new URL(url).hostname.replace(/^www\./, ''); }
+        catch (error) { return url; }
+      }
+
+      function renderSites() {
+        grid.textContent = '';
+        if (!sites.length) {
+          var empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = '還沒有收藏網站。選「新增網站」建立你的電視首頁。';
+          grid.appendChild(empty);
+        }
+
+        sites.forEach(function (site) {
+          var card = document.createElement('article');
+          card.className = 'site-card';
+
+          var open = document.createElement('button');
+          open.type = 'button';
+          open.className = 'site-open';
+          open.setAttribute('aria-label', '開啟 ' + site.name);
+          open.innerHTML = '<span class="site-icon" aria-hidden="true"></span><span class="site-copy"><strong></strong><span></span></span>';
+          open.querySelector('.site-icon').textContent = site.icon || '↗';
+          open.querySelector('strong').textContent = site.name;
+          open.querySelector('.site-copy span').textContent = hostLabel(site.url);
+          open.addEventListener('click', function () { launchUrl(site.url); });
+
+          var actions = document.createElement('div');
+          actions.className = 'site-actions';
+          var edit = document.createElement('button');
+          edit.type = 'button';
+          edit.textContent = '編輯';
+          edit.setAttribute('aria-label', '編輯 ' + site.name);
+          edit.addEventListener('click', function () { openSiteEditor(site); });
+          var remove = document.createElement('button');
+          remove.type = 'button';
+          remove.textContent = '移除';
+          remove.setAttribute('aria-label', '移除 ' + site.name);
+          remove.addEventListener('click', function () {
+            if (!window.confirm('要從網站清單移除「' + site.name + '」嗎？')) return;
+            sites = sites.filter(function (item) { return item.id !== site.id; });
+            saveSites();
+            renderSites();
+            focusFirst();
+          });
+          actions.appendChild(edit);
+          actions.appendChild(remove);
+          card.appendChild(open);
+          card.appendChild(actions);
+          grid.appendChild(card);
+        });
+
+        var add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'add-card';
+        add.innerHTML = '<span aria-hidden="true">＋</span>新增網站';
+        add.addEventListener('click', function () { openSiteEditor(null); });
+        grid.appendChild(add);
+      }
+
+      function launchUrl(rawUrl) {
+        var url = safeUrl(rawUrl);
+        if (!url) {
+          showToast('請輸入有效的 http 或 https 網址。');
+          return;
+        }
+        openInLgBrowser(url);
+      }
+
+      function openInLgBrowser(targetUrl) {
+        if (!targetUrl) return;
+        try {
+          if (window.webOSDev && window.webOSDev.APP && window.webOSDev.launch) {
+            window.webOSDev.launch({
+              id: window.webOSDev.APP.BROWSER,
+              params: { target: targetUrl },
+              onSuccess: function () {},
+              onFailure: function () { showToast('LG 瀏覽器無法啟動；仍留在 App 內。'); }
+            });
+            return;
+          }
+        } catch (error) {}
+        showToast('找不到 LG 瀏覽器；仍留在 App 內。');
+      }
+
+      function safeMediaUrl(value) {
+        var raw = String(value || '').trim();
+        if (!raw || raw.length > 4096) return null;
+        try {
+          var parsed = new URL(raw);
+          if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || !parsed.hostname || parsed.username || parsed.password) return null;
+          return parsed.href;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function closeMediaPlayer() {
+        if (mediaPlayerVideo) {
+          try { mediaPlayerVideo.pause(); } catch (error) {}
+          mediaPlayerVideo.removeAttribute('src');
+          try { mediaPlayerVideo.load(); } catch (error) {}
+        }
+        if (mediaPlayerOverlay) mediaPlayerOverlay.hidden = true;
+        addressInput.focus();
+      }
+
+      function startMediaPlayback() {
+        try {
+          var result = mediaPlayerVideo.play();
+          if (result && typeof result.catch === 'function') {
+            result.catch(function () {
+              mediaPlayerStatus.textContent = '電視尚未開始播放，請按「播放／暫停」。';
+            });
+          }
+        } catch (error) {
+          mediaPlayerStatus.textContent = '電視尚未開始播放，請按「播放／暫停」。';
+        }
+      }
+
+      function openMediaPlayer(rawUrl, title) {
+        var mediaUrl = safeMediaUrl(rawUrl);
+        if (!mediaUrl) {
+          showToast('收到的影片網址無效。');
+          return;
+        }
+        closeVisibleDialog(false);
+        mediaPlayerOverlay.hidden = false;
+        mediaPlayerTitle.textContent = String(title || '').trim() || hostLabel(mediaUrl);
+        mediaPlayerStatus.textContent = '正在連接影片來源…';
+        mediaPlayerVideo.src = mediaUrl;
+        try { mediaPlayerVideo.load(); } catch (error) {}
+        window.setTimeout(function () {
+          mediaPlayerToggle.focus();
+          startMediaPlayback();
+        }, 100);
+      }
+
+      mediaPlayerVideo.addEventListener('loadedmetadata', function () {
+        mediaPlayerStatus.textContent = '影片已載入，按播放即可觀看。';
+      });
+      mediaPlayerVideo.addEventListener('playing', function () {
+        mediaPlayerStatus.textContent = '正在播放';
+      });
+      mediaPlayerVideo.addEventListener('pause', function () {
+        if (mediaPlayerVideo.ended) mediaPlayerStatus.textContent = '播放已結束；按「播放／暫停」可重播。';
+        else if (!mediaPlayerOverlay.hidden) mediaPlayerStatus.textContent = '已暫停';
+      });
+      mediaPlayerVideo.addEventListener('ended', function () {
+        mediaPlayerStatus.textContent = '播放已結束；按「播放／暫停」可重播。';
+      });
+      mediaPlayerVideo.addEventListener('waiting', function () {
+        mediaPlayerStatus.textContent = '正在緩衝…';
+      });
+      mediaPlayerVideo.addEventListener('error', function () {
+        var error = mediaPlayerVideo.error;
+        var message = error && error.code === 2 ? '網路讀取影片失敗。' : error && error.code === 3 ? '電視不支援這段影片的編碼。' : error && error.code === 4 ? '電視不支援這個串流格式或來源。' : '影片播放失敗。';
+        mediaPlayerStatus.textContent = message;
+      });
+      document.getElementById('mediaPlayerClose').addEventListener('click', closeMediaPlayer);
+      mediaPlayerToggle.addEventListener('click', function () {
+        if (mediaPlayerVideo.paused) startMediaPlayback();
+        else mediaPlayerVideo.pause();
+      });
+
+      function parseAppLaunchParams(value) {
+        if (!value) return null;
+        if (typeof value === 'object') return value;
+        if (typeof value !== 'string') return null;
+        try {
+          var parsed = JSON.parse(value);
+          return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      var lastPhoneLaunchUrl = '';
+      var lastPhoneLaunchAt = 0;
+      function handlePhoneAppLaunch(event) {
+        var params = parseAppLaunchParams(event && event.detail);
+        if ((!params || !Object.keys(params).length) && window.PalmSystem) {
+          params = parseAppLaunchParams(window.PalmSystem.launchParams);
+        }
+        if (!params) return;
+        if (params.source === 'phone-controller' && params.controllerUrl) {
+          configurePhoneController(params);
+          showToast('已從手機 companion APK 連線。');
+        }
+        var mediaTarget = safeMediaUrl(params.mediaUrl || '');
+        if (mediaTarget) {
+          var mediaNow = Date.now();
+          if (mediaTarget === lastPhoneMediaUrl && mediaNow - lastPhoneMediaAt < 1500) return;
+          lastPhoneMediaUrl = mediaTarget;
+          lastPhoneMediaAt = mediaNow;
+          window.setTimeout(function () { openMediaPlayer(mediaTarget, params.mediaTitle || ''); }, 500);
+          return;
+        }
+        var target = safeUrl(params.url || params.target || '');
+        if (target) {
+          var now = Date.now();
+          if (target === lastPhoneLaunchUrl && now - lastPhoneLaunchAt < 1200) return;
+          lastPhoneLaunchUrl = target;
+          lastPhoneLaunchAt = now;
+          window.setTimeout(function () { launchUrl(target); }, 500);
+        } else if (params.source === 'phone-controller') {
+          showToast('已從手機開啟網頁助理。');
+        }
+      }
+
+      function openSiteEditor(site) {
+        editingId = site ? site.id : null;
+        document.getElementById('siteDialogTitle').textContent = site ? '編輯網站' : '新增網站';
+        document.getElementById('siteName').value = site ? site.name : '';
+        document.getElementById('siteUrl').value = site ? site.url : '';
+        showDialog(siteOverlay);
+        window.setTimeout(function () { document.getElementById('siteName').focus(); }, 50);
+      }
+
+      function showDialog(element, replaceCurrent) {
+        closeVisibleDialog(false);
+        element.hidden = false;
+        activeDialog = element;
+        if (replaceCurrent) history.replaceState({ webTvDialog: true }, '', '#dialog');
+        else history.pushState({ webTvDialog: true }, '', '#dialog');
+      }
+
+      function closeVisibleDialog(goBack) {
+        if (!activeDialog) return;
+        var old = activeDialog;
+        activeDialog = null;
+        old.hidden = true;
+        if (old === assistantOverlay) {
+          stopContinuousVoiceMode();
+          stopVoiceRecognition();
+        }
+        if (goBack && location.hash === '#dialog') history.back();
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.hidden = false;
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () { toast.hidden = true; }, 3600);
+      }
+
+      function getGeminiKey() {
+        try { return String(localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim(); }
+        catch (error) { return ''; }
+      }
+
+      function setChatStatus(message) {
+        chatStatus.textContent = message;
+      }
+
+      function scrollChatToBottom() {
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      function appendChatMessage(text, role) {
+        var row = document.createElement('div');
+        row.className = 'chat-message chat-message-' + role;
+        var sender = document.createElement('span');
+        sender.className = 'chat-sender';
+        sender.textContent = role === 'user' ? '你' : 'Gemini';
+        var bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        bubble.textContent = text || '';
+        row.appendChild(sender);
+        row.appendChild(bubble);
+        chatLog.appendChild(row);
+        scrollChatToBottom();
+        return bubble;
+      }
+
+      function appendAssistantText(text) {
+        if (!text) return;
+        if (!activeReplyBubble) {
+          activeReplyText = '';
+          activeReplyBubble = appendChatMessage('', 'assistant');
+        }
+        activeReplyText += text;
+        activeReplyBubble.textContent = activeReplyText;
+        scrollChatToBottom();
+      }
+
+      function setChatBusy(busy) {
+        chatBusy = !!busy;
+        chatInput.disabled = chatBusy;
+        sendChatButton.disabled = chatBusy;
+        sendChatButton.textContent = chatBusy ? '等待…' : '送出';
+      }
+
+      function updateVoiceLanguageButton() {
+        var english = voiceRecognitionLanguage === 'en-US';
+        voiceLanguageButton.textContent = english ? '辨識：English' : '辨識：中文';
+        voiceLanguageButton.setAttribute('aria-label', english ? '語音辨識語言：English (US)' : '語音辨識語言：繁體中文');
+      }
+
+      function loadVoiceRecognitionLanguage() {
+        try {
+          voiceRecognitionLanguage = localStorage.getItem(VOICE_LANGUAGE_STORAGE) === 'en-US' ? 'en-US' : 'zh-TW';
+        } catch (error) { voiceRecognitionLanguage = 'zh-TW'; }
+        updateVoiceLanguageButton();
+      }
+
+      function toggleVoiceRecognitionLanguage() {
+        voiceRecognitionLanguage = voiceRecognitionLanguage === 'zh-TW' ? 'en-US' : 'zh-TW';
+        try { localStorage.setItem(VOICE_LANGUAGE_STORAGE, voiceRecognitionLanguage); } catch (error) {}
+        updateVoiceLanguageButton();
+        if (speechRecognition) {
+          setChatStatus('辨識語言已切換；目前這段仍使用原語言，下一次開始聆聽時套用。');
+        } else {
+          setChatStatus(voiceRecognitionLanguage === 'en-US' ? '語音辨識已切換為 English (US)。' : '語音辨識已切換為繁體中文。');
+        }
+      }
+
+      function clearContinuousVoiceTimers() {
+        window.clearTimeout(continuousSilenceTimer);
+        window.clearTimeout(continuousRestartTimer);
+        continuousSilenceTimer = null;
+        continuousRestartTimer = null;
+      }
+
+      function stopContinuousVoiceMode(status) {
+        continuousVoiceEnabled = false;
+        clearContinuousVoiceTimers();
+        autoSendAfterVoiceEnd = false;
+        continuousVoiceButton.textContent = '開始語音對話';
+        continuousVoiceButton.setAttribute('aria-pressed', 'false');
+        if (speechRecognition) stopVoiceRecognition();
+        if (status) setChatStatus(status);
+      }
+
+      function scheduleContinuousListening() {
+        if (!continuousVoiceEnabled || chatBusy || activeDialog !== assistantOverlay) return;
+        window.clearTimeout(continuousRestartTimer);
+        var delay = 450;
+        if (audioContext && audioNextStart > audioContext.currentTime) {
+          delay = Math.max(delay, (audioNextStart - audioContext.currentTime) * 1000 + 500);
+        }
+        continuousRestartTimer = window.setTimeout(function () {
+          continuousRestartTimer = null;
+          if (continuousVoiceEnabled && !chatBusy && !speechRecognition && activeDialog === assistantOverlay) {
+            startContinuousVoiceRecognition();
+          }
+        }, delay);
+      }
+
+      function submitContinuousVoiceDraft() {
+        window.clearTimeout(continuousSilenceTimer);
+        continuousSilenceTimer = null;
+        autoSendAfterVoiceEnd = false;
+        if (!continuousVoiceEnabled || chatBusy) return;
+        var text = chatInput.value.trim();
+        if (!text) {
+          scheduleContinuousListening();
+          return;
+        }
+        if (speechRecognition) stopVoiceRecognition();
+        chatInput.value = '';
+        sendChatMessage(text);
+      }
+
+      function scheduleContinuousSubmit(recognition) {
+        window.clearTimeout(continuousSilenceTimer);
+        continuousSilenceTimer = window.setTimeout(function () {
+          continuousSilenceTimer = null;
+          if (!continuousVoiceEnabled || chatBusy || !chatInput.value.trim()) return;
+          autoSendAfterVoiceEnd = true;
+          setChatStatus('停頓 2 秒，正在送出…');
+          if (speechRecognition === recognition) {
+            try { recognition.stop(); return; } catch (error) {}
+          }
+          submitContinuousVoiceDraft();
+        }, VOICE_SILENCE_MS);
+      }
+
+      function toggleContinuousVoiceMode() {
+        if (continuousVoiceEnabled) {
+          stopContinuousVoiceMode('連續對話已停止。');
+          return;
+        }
+        if (!getGeminiKey()) {
+          setChatStatus('請先設定 Gemini API 金鑰，再開啟連續對話。');
+          return;
+        }
+        if (chatInput.value.trim()) {
+          setChatStatus('先送出或清除輸入框文字，再開啟連續對話。');
+          return;
+        }
+        continuousVoiceEnabled = true;
+        continuousVoiceButton.textContent = '停止語音對話';
+        continuousVoiceButton.setAttribute('aria-pressed', 'true');
+        if (chatBusy) {
+          setChatStatus('Gemini 回覆完成後會開始聆聽；停頓 2 秒會自動送出。');
+          return;
+        }
+        setChatStatus('連續對話已開啟，停頓 2 秒會自動送出。');
+        startContinuousVoiceRecognition();
+      }
+
+      function startContinuousVoiceRecognition() {
+        if (chatBusy || !continuousVoiceEnabled || speechRecognition) return;
+        var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Recognition) {
+          stopContinuousVoiceMode();
+          setChatStatus('這台電視不支援 App 直接語音辨識；可以使用螢幕鍵盤的麥克風。');
+          return;
+        }
+        var recognition;
+        try { recognition = new Recognition(); }
+        catch (error) {
+          stopContinuousVoiceMode();
+          setChatStatus('無法啟動語音辨識；可以使用螢幕鍵盤的麥克風。');
+          return;
+        }
+        speechRecognition = recognition;
+        var recognitionError = '';
+        recognition.lang = voiceRecognitionLanguage;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.onstart = function () {
+          setChatStatus('正在聆聽；停頓 2 秒會自動送出。');
+        };
+        recognition.onresult = function (event) {
+          var transcript = '';
+          var i;
+          for (i = 0; i < event.results.length; i++) {
+            if (event.results[i][0] && event.results[i][0].transcript) transcript += event.results[i][0].transcript;
+          }
+          chatInput.value = transcript.replace(/^\s+|\s+$/g, '');
+          if (chatInput.value && continuousVoiceEnabled) {
+            setChatStatus('已辨識語音；停頓 2 秒後會自動送出。');
+            scheduleContinuousSubmit(recognition);
+          }
+        };
+        recognition.onerror = function (event) {
+          var errorCode = event && event.error ? event.error : 'unknown';
+          if (errorCode === 'no-speech') {
+            setChatStatus('還沒聽到語音，繼續聆聽…');
+            return;
+          }
+          recognitionError = errorCode;
+          var messages = {
+            'not-allowed': '電視未允許 App 使用語音辨識；請使用螢幕鍵盤的麥克風。',
+            'service-not-allowed': '電視沒有提供 App 可用的語音服務；請使用螢幕鍵盤的麥克風。',
+            'audio-capture': 'App 無法使用電視的麥克風；請使用螢幕鍵盤的麥克風。',
+            'language-not-supported': '電視語音服務不支援目前選擇的辨識語言；請切換語音語言後重試。',
+            'network': '語音辨識服務連線失敗，請檢查網路後重試。'
+          };
+          var message = messages[recognitionError] || '語音辨識失敗；請檢查權限或使用螢幕鍵盤的麥克風。';
+          stopContinuousVoiceMode();
+          setChatStatus(message);
+        };
+        recognition.onend = function () {
+          if (speechRecognition === recognition) speechRecognition = null;
+          if (chatBusy || recognitionError) return;
+          if (!continuousVoiceEnabled) return;
+          if (autoSendAfterVoiceEnd) {
+            submitContinuousVoiceDraft();
+            return;
+          }
+          if (chatInput.value.trim()) {
+            if (!continuousSilenceTimer) scheduleContinuousSubmit(recognition);
+          } else scheduleContinuousListening();
+        };
+        try {
+          recognition.start();
+        } catch (error) {
+          speechRecognition = null;
+          stopContinuousVoiceMode();
+          setChatStatus('無法啟動語音辨識；請使用螢幕鍵盤的麥克風。');
+        }
+      }
+
+      function stopVoiceRecognition() {
+        var recognition = speechRecognition;
+        speechRecognition = null;
+        if (!recognition) return;
+        recognition.onstart = null;
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        try { recognition.abort(); }
+        catch (error) { try { recognition.stop(); } catch (stopError) {} }
+      }
+
+      function createAudioContext() {
+        if (audioContext) return;
+        var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        try {
+          audioContext = new AudioContextClass();
+          audioNextStart = audioContext.currentTime;
+          if (audioContext.state === 'suspended' && audioContext.resume) audioContext.resume();
+        } catch (error) { audioContext = null; }
+      }
+
+      function playPcmAudio(base64, mimeType) {
+        if (!audioContext || !base64 || String(mimeType || '').indexOf('audio/pcm') !== 0) return;
+        try {
+          var binary = window.atob(base64);
+          var sampleCount = Math.floor(binary.length / 2);
+          if (!sampleCount) return;
+          var buffer = audioContext.createBuffer(1, sampleCount, 24000);
+          var channel = buffer.getChannelData(0);
+          var view = new DataView(new ArrayBuffer(binary.length));
+          var i;
+          for (i = 0; i < binary.length; i++) view.setUint8(i, binary.charCodeAt(i));
+          for (i = 0; i < sampleCount; i++) channel[i] = view.getInt16(i * 2, true) / 32768;
+          var source = audioContext.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioContext.destination);
+          var startAt = Math.max(audioContext.currentTime, audioNextStart);
+          source.start(startAt);
+          audioNextStart = startAt + buffer.duration;
+        } catch (error) {}
+      }
+
+      function buildAssistantInstructions() {
+        var siteList = sites.map(function (site) {
+          return { id: site.id, name: site.name, url: site.url };
+        });
+        return '你是電視上的繁體中文網站助理。和使用者自然對話，並記住目前這段 Gemini Live 對話。使用者可以先談需求，再告訴你要開的網站。只有在使用者明確要求開啟頁面，而且目標明確時，才呼叫 openWebsite。優先使用已收藏網站清單中的 id 和網址；使用者清楚說出完整網域或網址時才可使用該網址。目標不清楚就先詢問，不要猜測或自行捏造網址。只開 http 或 https 網址。不要聲稱已開啟，除非工具回報成功。回覆請簡短、口語、使用繁體中文。已收藏網站清單：' + JSON.stringify(siteList);
+      }
+
+      function buildLiveSetup() {
+        var setup = {
+          setup: {
+            model: 'models/' + GEMINI_MODEL,
+            generationConfig: { responseModalities: ['AUDIO'] },
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
+            realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
+            systemInstruction: { parts: [{ text: buildAssistantInstructions() }] },
+            tools: [{ functionDeclarations: [{
+              name: 'openWebsite',
+              description: '開啟使用者明確指定的已收藏網站，或使用者清楚說出的完整網址。',
+              parameters: {
+                type: 'OBJECT',
+                properties: {
+                  siteId: { type: 'STRING', description: '已收藏網站的 id。使用收藏網站時提供。' },
+                  url: { type: 'STRING', description: '使用者明確說出的完整 http 或 https 網址。' },
+                  siteName: { type: 'STRING', description: '要開啟的網站名稱。' }
+                }
+              }
+            }]}]
+          }
+        };
+        if (conversationTurns.length) setup.setup.historyConfig = { initialHistoryInClientContent: true };
+        return setup;
+      }
+
+      function closeLiveSocket() {
+        var socket = liveSocket;
+        if (phoneAudioPending || phoneAudioActive || phoneAudioTurnInFlight) {
+          sendControllerPacket({ type: 'audio_error', message: '電視上的音訊連線已關閉。' });
+          phoneAudioPending = false;
+          phoneAudioActive = false;
+          phoneAudioTurnInFlight = false;
+          phoneAudioTranscript = '';
+          phoneAudioUserBubble = null;
+        }
+        liveSocket = null;
+        liveReady = false;
+        queuedPrompt = null;
+        window.clearTimeout(liveSetupTimer);
+        window.clearTimeout(chatResponseTimer);
+        if (socket && socket.readyState < 2) {
+          try { socket.close(); } catch (error) {}
+        }
+      }
+
+      function failChat(message, socket) {
+        if (socket && liveSocket !== socket) return;
+        window.clearTimeout(liveSetupTimer);
+        window.clearTimeout(chatResponseTimer);
+        stopContinuousVoiceMode();
+        if (phoneAudioPending || phoneAudioActive || phoneAudioTurnInFlight) {
+          sendControllerPacket({ type: 'audio_error', message: message });
+          phoneAudioPending = false;
+          phoneAudioActive = false;
+          phoneAudioTurnInFlight = false;
+          phoneAudioTranscript = '';
+          phoneAudioUserBubble = null;
+        }
+        queuedPrompt = null;
+        pendingUserTurn = null;
+        pendingLaunch = null;
+        if (activeReplyBubble && !activeReplyText) activeReplyBubble.textContent = message;
+        else appendChatMessage(message, 'assistant');
+        activeReplyBubble = null;
+        activeReplyText = '';
+        setChatBusy(false);
+        setChatStatus('連線中斷');
+        if (socket && liveSocket === socket) closeLiveSocket();
+      }
+
+      function sendQueuedPrompt() {
+        if (!liveReady || !liveSocket || queuedPrompt === null) return;
+        var prompt = queuedPrompt;
+        var socket = liveSocket;
+        queuedPrompt = null;
+        try {
+          socket.send(JSON.stringify({
+            clientContent: {
+              turns: [{ role: 'user', parts: [{ text: prompt }] }],
+              turnComplete: true
+            }
+          }));
+          setChatStatus('Gemini 正在回覆…');
+          window.clearTimeout(chatResponseTimer);
+          chatResponseTimer = window.setTimeout(function () {
+            if (liveSocket === socket && chatBusy) {
+              failChat('Gemini 等待逾時，請確認 API 額度和網路後再試。', socket);
+            }
+          }, 60000);
+        } catch (error) {
+          failChat('無法傳送訊息，請再試一次。', socket);
+        }
+      }
+
+      function handleLiveMessageText(text, socket) {
+        if (liveSocket !== socket) return;
+        var message;
+        try { message = JSON.parse(text); }
+        catch (error) {
+          failChat('Gemini 回傳格式無法解析，請再試一次。', socket);
+          return;
+        }
+        if (message.error) {
+          failChat('Gemini 拒絕連線。請確認 API 金鑰有效、已啟用 Gemini API，並檢查網路。', socket);
+          return;
+        }
+        if (message.setupComplete) {
+          window.clearTimeout(liveSetupTimer);
+          liveReady = true;
+          setChatStatus('Gemini Live 已連線');
+          if (conversationTurns.length) {
+            try {
+              socket.send(JSON.stringify({
+                clientContent: { turns: conversationTurns, turnComplete: true }
+              }));
+            } catch (error) {
+              failChat('無法還原剛才的對話。', socket);
+              return;
+            }
+          }
+          sendQueuedPrompt();
+          if (phoneAudioPending) beginPhoneAudioInput(socket);
+          return;
+        }
+        if (message.serverContent) handleServerContent(message.serverContent);
+        if (message.toolCall) handleLiveToolCall(message.toolCall, socket);
+      }
+
+      function handleLiveSocketMessage(event, socket) {
+        if (liveSocket !== socket) return;
+        var data = event && event.data;
+        if (typeof data === 'string') {
+          handleLiveMessageText(data, socket);
+          return;
+        }
+        if (!window.FileReader || !window.Blob) {
+          failChat('電視無法讀取 Gemini 的二進位回覆。', socket);
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          handleLiveMessageText(String(reader.result || ''), socket);
+        };
+        reader.onerror = function () {
+          failChat('讀取 Gemini 回覆失敗，請再試一次。', socket);
+        };
+        try {
+          var blob = data instanceof Blob ? data : new Blob([data]);
+          reader.readAsText(blob);
+        } catch (error) {
+          failChat('無法讀取 Gemini 回覆資料，請再試一次。', socket);
+        }
+      }
+
+      function connectLive() {
+        var key = getGeminiKey();
+        if (!key) {
+          failChat('請先到「設定」輸入 Gemini API 金鑰。');
+          return;
+        }
+        if (!window.WebSocket) {
+          failChat('這台電視的 App 瀏覽器不支援 WebSocket。');
+          return;
+        }
+        setChatStatus('正在連接 Gemini Live…');
+        var socket;
+        try {
+          socket = new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' + encodeURIComponent(key));
+        } catch (error) {
+          failChat('無法建立 Gemini 連線。請檢查網路和 API 金鑰。');
+          return;
+        }
+        liveSocket = socket;
+        window.clearTimeout(liveSetupTimer);
+        liveSetupTimer = window.setTimeout(function () {
+          if (liveSocket === socket && !liveReady) {
+            failChat('Gemini 連線等待逾時，請確認網路和 API 金鑰。', socket);
+          }
+        }, 20000);
+        socket.onopen = function () {
+          if (liveSocket !== socket) return;
+          try { socket.send(JSON.stringify(buildLiveSetup())); }
+          catch (error) { failChat('Gemini 連線設定失敗。', socket); }
+        };
+        socket.onmessage = function (event) { handleLiveSocketMessage(event, socket); };
+        socket.onerror = function () {
+          if (liveSocket === socket) failChat('Gemini 連線失敗。請檢查電視網路和 API 金鑰。', socket);
+        };
+        socket.onclose = function () {
+          if (liveSocket !== socket) return;
+          liveSocket = null;
+          liveReady = false;
+          if (chatBusy) failChat('Gemini 連線已中斷，請再送一次。');
+          else setChatStatus('連線已關閉；再次送出時會重新連線。');
+        };
+      }
+
+      function sendChatMessage(text) {
+        if (!getGeminiKey()) {
+          appendChatMessage('先到右上角「設定」輸入 Gemini API 金鑰，就能開始和我對話。', 'assistant');
+          setChatStatus('尚未設定 API 金鑰');
+          return;
+        }
+        appendChatMessage(text, 'user');
+        pendingUserTurn = { role: 'user', parts: [{ text: text }] };
+        activeReplyText = '';
+        activeReplyBubble = appendChatMessage('…', 'assistant');
+        pendingLaunch = null;
+        setChatBusy(true);
+        createAudioContext();
+        queuedPrompt = text;
+        if (liveReady) sendQueuedPrompt();
+        else if (!liveSocket) connectLive();
+        else setChatStatus('正在建立 Gemini Live 對話…');
+      }
+
+      function finishChatTurn() {
+        window.clearTimeout(chatResponseTimer);
+        var finishedPhoneAudio = phoneAudioTurnInFlight;
+        var reply = activeReplyText;
+        if (activeReplyBubble && !reply) {
+          activeReplyBubble.textContent = '（沒有收到文字回覆）';
+          reply = '';
+        }
+        if (pendingUserTurn) {
+          conversationTurns.push(pendingUserTurn);
+          pendingUserTurn = null;
+        }
+        if (reply) conversationTurns.push({ role: 'model', parts: [{ text: reply }] });
+        if (reply) sendControllerPacket({ type: 'assistant_reply', text: reply });
+        if (finishedPhoneAudio) {
+          phoneAudioPending = false;
+          phoneAudioActive = false;
+          phoneAudioTurnInFlight = false;
+          phoneAudioTranscript = '';
+          phoneAudioUserBubble = null;
+          sendControllerPacket({ type: 'audio_done' });
+        }
+        if (conversationTurns.length > 40) conversationTurns = conversationTurns.slice(conversationTurns.length - 40);
+        activeReplyBubble = null;
+        activeReplyText = '';
+        setChatBusy(false);
+        setChatStatus(liveReady ? 'Gemini Live 已連線' : '回覆完成');
+        if (pendingLaunch) {
+          var launch = pendingLaunch;
+          pendingLaunch = null;
+          window.setTimeout(function () { launchUrl(launch.url); }, 300);
+          return;
+        }
+        if (continuousVoiceEnabled) scheduleContinuousListening();
+      }
+
+      function updatePhoneAudioTranscript(text) {
+        var transcript = String(text || '').trim();
+        if (!transcript || !phoneAudioTurnInFlight) return;
+        phoneAudioTranscript = transcript;
+        if (phoneAudioUserBubble) phoneAudioUserBubble.textContent = transcript;
+        pendingUserTurn = { role: 'user', parts: [{ text: transcript }] };
+        scrollChatToBottom();
+      }
+
+      function handleServerContent(content) {
+        if (content.interimInputTranscription && content.interimInputTranscription.text) updatePhoneAudioTranscript(content.interimInputTranscription.text);
+        if (content.inputTranscription && content.inputTranscription.text) updatePhoneAudioTranscript(content.inputTranscription.text);
+        if (content.outputTranscription && content.outputTranscription.text) appendAssistantText(content.outputTranscription.text);
+        if (content.modelTurn && Array.isArray(content.modelTurn.parts)) {
+          content.modelTurn.parts.forEach(function (part) {
+            if (part.text) appendAssistantText(part.text);
+            if (part.inlineData) playPcmAudio(part.inlineData.data, part.inlineData.mimeType);
+          });
+        }
+        if (content.turnComplete) finishChatTurn();
+      }
+
+      function strictWebUrl(value) {
+        var raw = String(value || '').trim();
+        if (!raw) return null;
+        var candidate = raw;
+        if (!/^https?:\/\//i.test(candidate)) {
+          if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\:[0-9]{1,5})?(?:[/?#][^\s]*)?$/i.test(candidate)) return null;
+          candidate = 'https://' + candidate;
+        }
+        try {
+          var parsed = new URL(candidate);
+          if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || !parsed.hostname || parsed.username || parsed.password) return null;
+          return parsed.href;
+        } catch (error) { return null; }
+      }
+
+      function resolveRequestedSite(args) {
+        var i;
+        if (args.siteId) {
+          for (i = 0; i < sites.length; i++) {
+            if (sites[i].id === String(args.siteId)) return { url: sites[i].url, name: sites[i].name };
+          }
+        }
+        if (args.url) {
+          var exactUrl = strictWebUrl(args.url);
+          if (!exactUrl) return null;
+          for (i = 0; i < sites.length; i++) {
+            if (sites[i].url === exactUrl) return { url: exactUrl, name: sites[i].name };
+          }
+          return { url: exactUrl, name: args.siteName || hostLabel(exactUrl) };
+        }
+        return null;
+      }
+
+      function handleLiveToolCall(toolCall, socket) {
+        var responses = [];
+        var calls = toolCall.functionCalls || [];
+        calls.forEach(function (call) {
+          var result;
+          if (call.name === 'openWebsite') {
+            var requested = resolveRequestedSite(call.args || {});
+            if (requested) {
+              pendingLaunch = requested;
+              result = { status: 'opening', siteName: requested.name, url: requested.url };
+              setChatStatus('正在開啟 ' + requested.name + '…');
+            } else {
+              result = { status: 'invalid_target', message: '找不到有效的已收藏網站或 http/https 網址。請先詢問使用者。' };
+            }
+          } else {
+            result = { status: 'unsupported_tool' };
+          }
+          var response = { name: call.name, response: { result: result } };
+          if (call.id) response.id = call.id;
+          responses.push(response);
+        });
+        if (!responses.length || socket.readyState !== WebSocket.OPEN) return;
+        try { socket.send(JSON.stringify({ toolResponse: { functionResponses: responses } })); }
+        catch (error) { failChat('網站操作回覆傳送失敗。', socket); }
+      }
+
+      function openAssistant() {
+        if (!chatLog.children.length) {
+          appendChatMessage('你好，我可以陪你聊一聊，再依照你說的網站名稱或網址幫你開啟頁面。', 'assistant');
+        }
+        showDialog(assistantOverlay);
+        setChatStatus(liveReady ? 'Gemini Live 已連線' : getGeminiKey() ? '尚未連線；送出第一句話時會連接 Gemini Live。' : '請先在設定輸入 Gemini API 金鑰。');
+        window.setTimeout(function () { continuousVoiceButton.focus(); }, 60);
+      }
+
+      function loadGeminiKeySetting() {
+        geminiKeyInput.value = getGeminiKey();
+        geminiKeyInput.type = 'password';
+        document.getElementById('toggleKeyVisibility').textContent = '顯示';
+        geminiKeyStatus.textContent = getGeminiKey() ? '這台電視已保存一組 API 金鑰。' : '尚未保存 API 金鑰。';
+      }
+
+      function focusFirst() {
+        var target = document.querySelector('button:not([disabled]), input:not([disabled])');
+        if (target) target.focus();
+      }
+
+      document.getElementById('openForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var value = addressInput.value.trim();
+        if (!value) { addressInput.focus(); return; }
+        launchUrl(value);
+      });
+
+      document.getElementById('settingsButton').addEventListener('click', function () {
+        loadGeminiKeySetting();
+        showDialog(settingsOverlay);
+        window.setTimeout(function () { geminiKeyInput.focus(); }, 60);
+      });
+      document.getElementById('assistantButton').addEventListener('click', openAssistant);
+      document.getElementById('phoneControllerButton').addEventListener('click', openPhoneControllerDialog);
+      document.getElementById('closeAssistantButton').addEventListener('click', function () {
+        closeLiveSocket();
+        pendingUserTurn = null;
+        pendingLaunch = null;
+        setChatBusy(false);
+        closeVisibleDialog(true);
+      });
+      document.getElementById('assistantSettingsButton').addEventListener('click', function () {
+        closeLiveSocket();
+        stopContinuousVoiceMode();
+        pendingUserTurn = null;
+        setChatBusy(false);
+        closeVisibleDialog(false);
+        loadGeminiKeySetting();
+        showDialog(settingsOverlay, true);
+        window.setTimeout(function () { geminiKeyInput.focus(); }, 60);
+      });
+      document.getElementById('chatForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (chatBusy) return;
+        var text = chatInput.value.trim();
+        if (!text) { chatInput.focus(); return; }
+        window.clearTimeout(continuousSilenceTimer);
+        continuousSilenceTimer = null;
+        autoSendAfterVoiceEnd = false;
+        if (speechRecognition) stopVoiceRecognition();
+        chatInput.value = '';
+        sendChatMessage(text);
+      });
+      refreshTvNetworkIpButton.addEventListener('click', refreshTvNetworkIp);
+      document.getElementById('controllerReconnectButton').addEventListener('click', function () {
+        if (controllerConfig.url) connectPhoneController();
+        else updateControllerStatus();
+      });
+      voiceLanguageButton.addEventListener('click', toggleVoiceRecognitionLanguage);
+      continuousVoiceButton.addEventListener('click', toggleContinuousVoiceMode);
+      document.getElementById('clearConversationButton').addEventListener('click', function () {
+        closeLiveSocket();
+        stopContinuousVoiceMode();
+        conversationTurns = [];
+        pendingUserTurn = null;
+        pendingLaunch = null;
+        activeReplyBubble = null;
+        activeReplyText = '';
+        setChatBusy(false);
+        chatLog.textContent = '';
+        appendChatMessage('對話已清除。你可以重新告訴我想找什麼網站。', 'assistant');
+        setChatStatus(getGeminiKey() ? '尚未連線；送出第一句話時會連接 Gemini Live。' : '請先在設定輸入 Gemini API 金鑰。');
+      });
+      document.getElementById('toggleKeyVisibility').addEventListener('click', function () {
+        var show = geminiKeyInput.type === 'password';
+        geminiKeyInput.type = show ? 'text' : 'password';
+        this.textContent = show ? '隱藏' : '顯示';
+        geminiKeyInput.focus();
+      });
+      document.getElementById('geminiKeyForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var key = geminiKeyInput.value.trim();
+        if (!key) {
+          geminiKeyStatus.textContent = '請先輸入 Gemini API 金鑰。';
+          geminiKeyInput.focus();
+          return;
+        }
+        try {
+          localStorage.setItem(GEMINI_KEY_STORAGE, key);
+          closeLiveSocket();
+          stopContinuousVoiceMode();
+          pendingUserTurn = null;
+          setChatBusy(false);
+          geminiKeyStatus.textContent = '金鑰已保存在這台電視。';
+          showToast('Gemini API 金鑰已儲存。');
+        } catch (error) {
+          geminiKeyStatus.textContent = '無法儲存金鑰；請確認電視 App 儲存空間。';
+        }
+      });
+      document.getElementById('clearGeminiKeyButton').addEventListener('click', function () {
+        try { localStorage.removeItem(GEMINI_KEY_STORAGE); } catch (error) {}
+        closeLiveSocket();
+        stopContinuousVoiceMode();
+        pendingUserTurn = null;
+        setChatBusy(false);
+        geminiKeyInput.value = '';
+        geminiKeyStatus.textContent = '已清除這台電視保存的 Gemini API 金鑰。';
+        setChatStatus('尚未設定 API 金鑰');
+        showToast('Gemini API 金鑰已清除。');
+      });
+      document.querySelectorAll('[data-close-dialog]').forEach(function (button) {
+        button.addEventListener('click', function () { closeVisibleDialog(true); });
+      });
+      document.getElementById('manageSitesButton').addEventListener('click', function () {
+        closeVisibleDialog(false);
+        showDialog(siteOverlay, true);
+        editingId = null;
+        document.getElementById('siteDialogTitle').textContent = '新增網站';
+        document.getElementById('siteName').value = '';
+        document.getElementById('siteUrl').value = '';
+        window.setTimeout(function () { document.getElementById('siteName').focus(); }, 50);
+      });
+
+      document.getElementById('siteForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        var name = document.getElementById('siteName').value.trim();
+        var rawUrl = document.getElementById('siteUrl').value.trim();
+        var url = safeUrl(rawUrl);
+        if (!name || !url || url.indexOf('/search?q=') !== -1 && rawUrl.indexOf('.') === -1) {
+          showToast('請填寫名稱，並輸入有效網站網址。');
+          return;
+        }
+        if (editingId) {
+          sites = sites.map(function (site) {
+            return site.id === editingId ? Object.assign({}, site, { name: name, url: url }) : site;
+          });
+        } else {
+          sites.push({ id: 'site-' + Date.now(), name: name, url: url, icon: '↗' });
+        }
+        saveSites();
+        renderSites();
+        closeVisibleDialog(true);
+        showToast('網站已儲存。');
+        focusFirst();
+      });
+
+      window.addEventListener('popstate', function () {
+        if (activeDialog) closeVisibleDialog(false);
+      });
+
+      document.addEventListener('webOSLaunch', handlePhoneAppLaunch, true);
+      document.addEventListener('webOSRelaunch', handlePhoneAppLaunch, true);
+
+      document.addEventListener('keydown', function (event) {
+        if (!mediaPlayerOverlay.hidden) {
+          if (event.key === 'Escape' || event.key === 'Backspace' || event.key === 'Back' || event.key === 'GoBack' || event.keyCode === 461) {
+            closeMediaPlayer();
+            event.preventDefault();
+          }
+          return;
+        }
+        if (event.key === 'Escape' && activeDialog) {
+          closeVisibleDialog(true);
+          return;
+        }
+        if (!/^Arrow(Up|Down|Left|Right)$/.test(event.key)) return;
+        var current = document.activeElement;
+        if (current && (current.tagName === 'INPUT' || current.tagName === 'TEXTAREA')) return;
+        var direction = event.key.slice(5).toLowerCase();
+        var candidates = Array.prototype.slice.call(document.querySelectorAll('button:not([disabled]), input:not([disabled])')).filter(function (node) {
+          return !node.closest('[hidden]') && node.getClientRects().length > 0;
+        });
+        if (!candidates.length) return;
+        var currentRect = current && current.getBoundingClientRect ? current.getBoundingClientRect() : null;
+        if (!currentRect || !currentRect.width || !currentRect.height) {
+          candidates[0].focus();
+          event.preventDefault();
+          return;
+        }
+        var cx = currentRect.left + currentRect.width / 2;
+        var cy = currentRect.top + currentRect.height / 2;
+        var best = null;
+        var bestScore = Infinity;
+        candidates.forEach(function (node) {
+          if (node === current) return;
+          var rect = node.getBoundingClientRect();
+          var dx = rect.left + rect.width / 2 - cx;
+          var dy = rect.top + rect.height / 2 - cy;
+          var primary = direction === 'right' ? dx : direction === 'left' ? -dx : direction === 'down' ? dy : -dy;
+          if (primary <= 0) return;
+          var secondary = direction === 'left' || direction === 'right' ? Math.abs(dy) : Math.abs(dx);
+          var score = primary + secondary * 2.4;
+          if (score < bestScore) { bestScore = score; best = node; }
+        });
+        if (!best) {
+          var list = candidates;
+          best = list[direction === 'left' || direction === 'up' ? list.length - 1 : 0];
+        }
+        if (best) {
+          best.focus();
+          event.preventDefault();
+        }
+      });
+
+      loadVoiceRecognitionLanguage();
+      renderSites();
+      handlePhoneAppLaunch();
+      addressInput.focus();
+    }());
+  </script>
+</body>
+</html>

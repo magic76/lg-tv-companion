@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = 'LGVideoSender'
+rootProject.name = 'LGTVCompanion'
 include ':app'

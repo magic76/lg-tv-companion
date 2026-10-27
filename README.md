@@ -1,64 +1,66 @@
-# LG Video Sender
+# LG TV Companion
 
-LG Video Sender is the Android companion for a custom LG webOS TV app. The phone runs the local WebSocket bridge and bundled control page; the TV app connects to the phone over Wi-Fi. The Android app does not need a separate Termux server.
+適用於 LG webOS 電視的手機 companion 與電視 App，整合手機遙控、Gemini 對話、網站開啟和支援格式的影片投放。Android 與 webOS 兩端的原始碼和安裝檔都在這個 repo。
 
-此專案是 LG 電視自製 webOS app 的 Android companion。手機 App 內建區網 WebSocket bridge 和控制頁，電視端 App 會透過 Wi-Fi 連回手機；不需要另外在 Termux 啟動伺服器。
+## 專案內容
 
-## Features / 功能
+| 目錄 | 用途 |
+| --- | --- |
+| `app/` | Android companion：QR 配對、觸控板、文字輸入、Gemini Live、網站控制與影片串流傳送 |
+| `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、接收手機控制和支援的影片串流 |
+| `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-- Pair the TV by scanning its QR code, with manual TV IP entry as a fallback.
-- Send text and microphone audio to Gemini Live and display its replies.
-- Open a URL on the TV, manage the TV app's website bookmarks, and send supported video streams.
-- Use the phone as a TV touchpad, send Back/Home buttons, and type into a focused TV text field.
-- 手機掃描電視 QR code 配對，也可手動輸入電視 IP。
-- 透過 Gemini Live 傳送文字或手機麥克風音訊，並顯示 AI 回覆。
-- 在電視開啟網址、管理網站收藏，並傳送支援的影片串流。
-- 用手機觸控板控制電視游標、送出返回／首頁，以及輸入文字。
+目前安裝檔版本分開管理：Android `1.4.13`，webOS TV `1.4.8`。
 
-## Requirements / 使用條件
+## 下載
 
-- Android 7.0 or later (minSdk 24).
-- An LG TV with the matching custom webOS companion app installed. The TV-side app is a separate project and is not included in this repository.
-- Put the phone and TV on the same Wi-Fi network. Keep the Android companion app open while using the bridge.
-- Android 7.0 以上。
-- LG 電視需另外安裝相容的自製 webOS companion app；電視端專案不包含在此 repo。
-- 手機和電視需在同一個 Wi-Fi。使用 bridge 時請讓 Android companion app 保持開啟。
+- [Android companion APK v1.4.13](releases/LGTVCompanion-Android-v1.4.13.apk) — debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [LG webOS TV IPK v1.4.8](releases/com.example.hellotv_1.4.8_all.ipk)
+- [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 
-## Pair and use / 配對與操作
+## 初次設定
 
-1. Install the APK on the Android phone.
-2. On the TV, open **手機控制連線** and show its QR code.
-3. In LG Video Sender, choose **掃描電視 QR 並連線** and scan the TV. If scanning is unavailable, enter the TV's current IP in settings.
-4. Accept the control permission prompt on the TV. Text input may request an additional permission.
-5. To type, open **遙控器 → 手機鍵盤輸入**. First focus a search box or other editable field on the TV, then type on the phone and tap **傳送文字**. **Enter** is sent separately.
+1. 在 LG 電視啟用 Developer Mode，使用 webOS TV CLI 安裝 IPK；安裝範例見 [`webos-tv/README.md`](webos-tv/README.md)。
+2. Android 手機安裝 APK，手機和電視連到同一個 Wi-Fi。
+3. 開啟電視 App 的「手機控制連線」並顯示 QR code；在 Android companion 掃描配對。電視出現控制授權提示時允許。
+4. 在電視 App 設定 Gemini API 金鑰，即可使用 Gemini 對話。手機和電視不需要另外安裝或啟動 Termux bridge；使用手機控制時，Android companion 必須保持開啟。
 
-1. 在 Android 手機安裝 APK。
-2. 電視開啟 **手機控制連線**，顯示 QR code。
-3. 在 LG Video Sender 選 **掃描電視 QR 並連線**。若無法掃描，可在設定輸入電視目前的 IP。
-4. 電視出現控制權限提示時按允許；文字輸入可能會另外詢問授權。
-5. 要打字時開啟 **遙控器 → 手機鍵盤輸入**。先讓電視上的搜尋框或其他文字欄位取得焦點，再於手機輸入並按 **傳送文字**；Enter 需另外按。
+## 功能與限制
 
-## APK download / APK 下載
+- 手機可控制電視游標、輸入文字、開啟網址、編輯網站收藏，也能把支援的影片串流交給電視播放。
+- Gemini Live 可在電視上對話；手機 companion 可傳送文字或手機麥克風音訊，電視畫面會顯示回覆。
+- 影片投放適用於網頁能公開取得的 MP4/HLS 等串流。DRM、登入限制、blob URL 或依賴特殊 cookie/header 的影片可能無法播放。這不是手機全螢幕鏡像功能。
+- 手機與電視需要在同一個區域網路。電視型號、webOS 版本和網站播放器可能影響相容性。
+- Gemini 金鑰由使用者在電視 App 輸入並保存在電視 App 的本機儲存區；它不在 repo 內。用戶端金鑰可能被取出，請勿把含有個人金鑰的 App 或裝置資料分享出去。
 
-Current sideloadable APK: [LGVideoSender-v1.4.13.apk](releases/LGVideoSender-v1.4.13.apk). This is a debug-signed APK for direct installation, not a Play Store release.
-SHA-256: `173ce71389dee35a231527106ba02a2a0bd01564052bb5dd14d59041f3d5ce29` (also listed in [`releases/SHA256SUMS.txt`](releases/SHA256SUMS.txt)).
+## 從原始碼建置
 
-目前版本：[LGVideoSender-v1.4.13.apk](releases/LGVideoSender-v1.4.13.apk)。這是供自行安裝的 debug 簽名 APK，不是 Play Store 發行版。
+### Android companion
 
-## Build / 編譯
-
-Requirements: JDK 17 or later, Android SDK Platform 36, and Gradle 8.13.
+需求：JDK 17 以上、Android SDK Platform 36、Gradle 8.13。
 
 ```sh
 gradle assembleDebug
 ```
 
-The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+APK 會產生於 `app/build/outputs/apk/debug/app-debug.apk`。
 
-需求：JDK 17 以上、Android SDK Platform 36、Gradle 8.13。執行上方指令後，APK 會產生於 `app/build/outputs/apk/debug/app-debug.apk`。
+### LG webOS TV App
 
-## Limitations / 限制
+先安裝 [webOS TV CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)，然後：
 
-The video resolver can only pass through supported direct streams such as MP4/HLS when the page exposes them to its WebView. DRM, login-only playback, blob URLs, and streams requiring special cookies or headers may not work. Some TV apps do not expose a text field to the webOS input service.
+```sh
+cd webos-tv
+mkdir -p dist
+ares-package -o dist app
+```
 
-影片解析只適用於頁面能讓 WebView 取得的 MP4/HLS 等來源。DRM、僅限登入的播放器、blob URL，或需要特殊 cookie／header 的串流可能無法播放。部分電視 App 不會把文字欄位提供給 webOS 輸入服務。
+IPK 會輸出至 `webos-tv/dist/`。電視端建置、安裝指令和 Developer Mode 說明見 [`webos-tv/README.md`](webos-tv/README.md)。
+
+---
+
+## English
+
+LG TV Companion is a two-part project for LG webOS TVs. The Android app provides QR pairing, touchpad and text input, Gemini Live controls, website management, and supported video stream handoff. The webOS app provides the TV interface and receives phone control over the local network.
+
+Install the webOS IPK and Android APK, connect both devices to the same Wi-Fi, then pair by scanning the QR code shown in the TV app. The Android companion hosts the local bridge, so keep it open while using phone control. Gemini API keys are entered and stored locally on the TV; they are not included in this repository.

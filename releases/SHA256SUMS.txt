@@ -1,1 +1,2 @@
-173ce71389dee35a231527106ba02a2a0bd01564052bb5dd14d59041f3d5ce29  releases/LGVideoSender-v1.4.13.apk
+173ce71389dee35a231527106ba02a2a0bd01564052bb5dd14d59041f3d5ce29  releases/LGTVCompanion-Android-v1.4.13.apk
+6f45b08df6c6ad18d7189867b2226d5dfba215ce18e8df20587885f3978888ce  releases/com.example.hellotv_1.4.8_all.ipk

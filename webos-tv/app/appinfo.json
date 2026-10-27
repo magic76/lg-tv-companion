@@ -1,0 +1,14 @@
+{
+  "id": "com.example.hellotv",
+  "version": "1.4.8",
+  "vendor": "Personal Web",
+  "type": "web",
+  "requiredACG": [
+    "application.launcher",
+    "network.query"
+  ],
+  "main": "index.html",
+  "title": "網頁助理",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png"
+}

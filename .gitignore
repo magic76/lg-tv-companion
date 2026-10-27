@@ -5,3 +5,9 @@ local.properties
 *.iml
 .idea/
 .DS_Store
+webos-tv/dist/
+webos-tv/.webos/
+webos-tv/app/node_modules/
+**/.pair-code
+**/server.log
+**/.package-staging-clean/
