@@ -548,6 +548,11 @@ public final class MainActivity extends Activity {
                     }
                 });
             }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                if (pendingWebPermission == request) pendingWebPermission = null;
+            }
         });
 
         controllerDialog = new Dialog(this);

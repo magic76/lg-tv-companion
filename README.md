@@ -10,11 +10,11 @@
 | `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、接收手機控制和支援的影片串流 |
 | `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-目前安裝檔版本分開管理：Android `1.4.13`，webOS TV `1.4.8`。
+目前安裝檔版本分開管理：Android `1.4.14`，webOS TV `1.4.8`。
 
 ## 下載
 
-- [Android companion APK v1.4.13](releases/LGTVCompanion-Android-v1.4.13.apk) — debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [Android companion APK v1.4.14](releases/LGTVCompanion-Android-v1.4.14.apk) — debug 簽名，供自行安裝，不是 Play Store 發行版。
 - [LG webOS TV IPK v1.4.8](releases/com.example.hellotv_1.4.8_all.ipk)
 - [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 

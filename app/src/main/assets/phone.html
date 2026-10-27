@@ -622,13 +622,17 @@
           audioMuteGain = null;
         }
         if (audioStream) {
-          audioStream.getTracks().forEach(function (track) { try { track.stop(); } catch (error) {} });
+          var oldStream = audioStream;
           audioStream = null;
+          oldStream.getTracks().forEach(function (track) { try { track.stop(); } catch (error) {} });
         }
         if (audioContext) {
           var oldContext = audioContext;
           audioContext = null;
-          try { oldContext.close(); } catch (error) {}
+          try {
+            var closePromise = oldContext.close();
+            if (closePromise && closePromise.catch) closePromise.catch(function () {});
+          } catch (error) {}
         }
         audioResamplePosition = 0;
         audioPcmQueue = [];
@@ -680,6 +684,13 @@
         if (!audioContext) audioContext = new AudioContextClass();
         if (audioContext.state === 'suspended' && audioContext.resume) audioContext.resume();
         audioStream = stream;
+        audioStream.getAudioTracks().forEach(function (track) {
+          track.onended = function () {
+            if (audioStream === stream && (audioState === 'recording' || audioState === 'waiting_for_tv')) {
+              stopPhoneAudio(true, '手機麥克風連線中斷，語音已停止。請重新開始。');
+            }
+          };
+        });
         audioSource = audioContext.createMediaStreamSource(stream);
         audioFilter = audioContext.createBiquadFilter();
         audioFilter.type = 'lowpass';
@@ -712,25 +723,37 @@
         else if (audioState === 'waiting_reply') setStatus('語音已送出，等待 Gemini 回覆…');
       }
 
+      function requestPhoneAudioStream(retryCount) {
+        var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        try {
+          audioContext = new AudioContextClass();
+          if (audioContext.state === 'suspended' && audioContext.resume) {
+            var resumePromise = audioContext.resume();
+            if (resumePromise && resumePromise.catch) resumePromise.catch(function () {});
+          }
+        } catch (error) {
+          return Promise.reject(error);
+        }
+        return navigator.mediaDevices.getUserMedia({ audio: true, video: false }).catch(function (error) {
+          if (!error || error.name !== 'NotReadableError' || retryCount > 0 || audioState !== 'requesting') throw error;
+          cleanupAudioCapture();
+          setStatus('麥克風暫時無法啟動，正在重新嘗試…');
+          return new Promise(function (resolve) { window.setTimeout(resolve, 500); }).then(function () {
+            if (audioState !== 'requesting' || document.hidden) throw error;
+            return requestPhoneAudioStream(retryCount + 1);
+          });
+        });
+      }
+
       function startPhoneAudio() {
         if (!audioSupported || !socket || socket.readyState !== WebSocket.OPEN || !tvOnline || audioState !== 'idle') return;
         audioState = 'requesting';
         updateConnection();
         setStatus('正在啟動手機麥克風…');
-        var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        try {
-          audioContext = new AudioContextClass();
-          if (audioContext.state === 'suspended' && audioContext.resume) audioContext.resume();
-        } catch (error) {
-          audioContext = null;
-          audioState = 'idle';
-          updateConnection();
-          setStatus('無法啟動音訊處理；請更新手機瀏覽器。');
-          return;
-        }
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
-          if (audioState !== 'requesting') {
+        requestPhoneAudioStream(0).then(function (stream) {
+          if (audioState !== 'requesting' || document.hidden) {
             stream.getTracks().forEach(function (track) { track.stop(); });
+            if (audioState === 'requesting') stopPhoneAudio(false, '手機控制頁已離開前景，麥克風已停止。');
             return;
           }
           try { setupAudioCapture(stream); }
@@ -756,19 +779,29 @@
           }, 25000);
         }).catch(function (error) {
           cleanupAudioCapture();
+          if (audioState !== 'requesting') return;
           audioState = 'idle';
           updateConnection();
           var errorName = error && error.name ? error.name : '未知錯誤';
           var message = errorName === 'NotAllowedError'
             ? 'Android 或 WebView 拒絕了麥克風存取（NotAllowedError）；請確認 App 的麥克風權限和手機的麥克風隱私開關。'
             : errorName === 'NotReadableError'
-              ? '麥克風目前無法使用（NotReadableError）；請先關閉通話、錄音或其他正在使用麥克風的 App，再重試。'
+              ? '麥克風仍無法啟動（NotReadableError）。請確認 Android 麥克風存取已開啟，關閉通話、錄音、相機或語音助理，再重新開啟手機控制頁。'
               : errorName === 'OverconstrainedError'
                 ? '手機麥克風不支援要求的錄音格式（OverconstrainedError）；請更新 Android System WebView 後重試。'
                 : '無法開啟手機麥克風（' + errorName + '），請稍後重試。';
           setStatus(message);
         });
       }
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden && audioState !== 'idle' && audioState !== 'requesting') {
+          stopPhoneAudio(true, '手機控制頁已離開前景，麥克風已停止。');
+        }
+      });
+      window.addEventListener('pagehide', function () {
+        if (audioState !== 'idle') stopPhoneAudio(true, '手機控制頁已關閉，麥克風已停止。');
+      });
 
       function connectBridge() {
         window.clearTimeout(reconnectTimer);
