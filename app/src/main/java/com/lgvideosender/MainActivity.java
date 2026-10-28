@@ -106,6 +106,7 @@ public final class MainActivity extends Activity {
     private volatile TvPointerClient pointerClient;
     private volatile WebView controllerWebView;
     private Dialog controllerDialog;
+    private volatile String pendingControllerTvScanCallbackId = "";
     private PermissionRequest pendingWebPermission;
 
     private EditText urlInput;
@@ -197,37 +198,61 @@ public final class MainActivity extends Activity {
         controllerButton.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
         controllerButton.setOnClickListener(view -> openPhoneController());
         LinearLayout.LayoutParams controllerParams = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1.25f);
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         controllerParams.rightMargin = dp(8);
         quickActions.addView(controllerButton, controllerParams);
-        Button tvSettingsButton = new Button(this);
-        tvSettingsButton.setText("設定電視 IP");
-        tvSettingsButton.setAllCaps(false);
-        tvSettingsButton.setMinHeight(dp(58));
-        tvSettingsButton.setTextColor(TEXT);
-        tvSettingsButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
-        tvSettingsButton.setOnClickListener(view -> openTvSettings());
-        quickActions.addView(tvSettingsButton, new LinearLayout.LayoutParams(0,
+        Button scanTvButton = new Button(this);
+        scanTvButton.setText("掃描電視 QR 配對");
+        scanTvButton.setAllCaps(false);
+        scanTvButton.setMinHeight(dp(58));
+        scanTvButton.setTextColor(TEXT);
+        scanTvButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
+        scanTvButton.setOnClickListener(view -> scanTvQrCode());
+        quickActions.addView(scanTvButton, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         homeRoot.addView(quickActions, matchWrap());
 
-        Button scanTvButton = new Button(this);
-        scanTvButton.setText("掃描電視 QR 並連線");
-        scanTvButton.setAllCaps(false);
-        scanTvButton.setMinHeight(dp(56));
-        scanTvButton.setTextColor(BG);
-        scanTvButton.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
-        scanTvButton.setOnClickListener(view -> scanTvQrCode());
-        LinearLayout.LayoutParams scanTvParams = matchWrap();
-        scanTvParams.topMargin = dp(10);
-        homeRoot.addView(scanTvButton, scanTvParams);
-
         TextView setupHint = new TextView(this);
-        setupHint.setText("第一次使用：在電視開啟「手機控制連線」，再掃描畫面上的 QR code。手機和電視需使用同一個 Wi‑Fi。");
+        setupHint.setText("首次使用時，掃描電視「手機控制連線」畫面的 QR code。之後打開控制頁，按「連線電視」即可。手機和電視需使用同一個 Wi‑Fi。");
         setupHint.setTextColor(MUTED);
         setupHint.setTextSize(13);
-        setupHint.setPadding(dp(2), dp(8), dp(2), dp(24));
+        setupHint.setPadding(dp(2), dp(8), dp(2), dp(10));
         homeRoot.addView(setupHint, matchWrap());
+
+        Button advancedSettingsToggle = new Button(this);
+        advancedSettingsToggle.setText("進階設定　⌄");
+        advancedSettingsToggle.setAllCaps(false);
+        advancedSettingsToggle.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        advancedSettingsToggle.setMinHeight(dp(44));
+        advancedSettingsToggle.setTextColor(MUTED);
+        advancedSettingsToggle.setBackgroundTintList(ColorStateList.valueOf(BG));
+        homeRoot.addView(advancedSettingsToggle, matchWrap());
+
+        LinearLayout advancedSettings = new LinearLayout(this);
+        advancedSettings.setOrientation(LinearLayout.VERTICAL);
+        advancedSettings.setVisibility(View.GONE);
+        advancedSettings.setPadding(dp(12), dp(4), dp(12), dp(10));
+        TextView advancedHint = new TextView(this);
+        advancedHint.setText("一般不需要手動設定。QR 無法使用或電視 IP 改變時，才手動輸入 IP。");
+        advancedHint.setTextColor(MUTED);
+        advancedHint.setTextSize(13);
+        advancedSettings.addView(advancedHint, matchWrap());
+        Button tvSettingsButton = new Button(this);
+        tvSettingsButton.setText("手動輸入電視 IP");
+        tvSettingsButton.setAllCaps(false);
+        tvSettingsButton.setMinHeight(dp(48));
+        tvSettingsButton.setTextColor(TEXT);
+        tvSettingsButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
+        tvSettingsButton.setOnClickListener(view -> openTvSettings());
+        LinearLayout.LayoutParams manualIpParams = matchWrap();
+        manualIpParams.topMargin = dp(6);
+        advancedSettings.addView(tvSettingsButton, manualIpParams);
+        homeRoot.addView(advancedSettings, matchWrap());
+        advancedSettingsToggle.setOnClickListener(view -> {
+            boolean show = advancedSettings.getVisibility() != View.VISIBLE;
+            advancedSettings.setVisibility(show ? View.VISIBLE : View.GONE);
+            advancedSettingsToggle.setText(show ? "進階設定　⌃" : "進階設定　⌄");
+        });
 
         TextView videoTitle = new TextView(this);
         videoTitle.setText("找影片並投放");
@@ -618,6 +643,22 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void scanAndConnectTv(String callbackId) {
+            if (controllerWebView == null) {
+                postControllerLaunchResult(callbackId, false, "控制頁已關閉，請重新開啟後再掃描。");
+                return;
+            }
+            pendingControllerTvScanCallbackId = callbackId == null ? "" : callbackId;
+            mainHandler.post(() -> {
+                if (controllerWebView == null) {
+                    completeControllerTvScan(false, "控制頁已關閉，請重新開啟後再掃描。");
+                    return;
+                }
+                scanTvQrCode();
+            });
+        }
+
+        @JavascriptInterface
         public void connectPointer() {
             try { beginPointerConnection(); }
             catch (Throwable error) {
@@ -747,8 +788,8 @@ public final class MainActivity extends Activity {
         content.setPadding(padding, dp(8), padding, 0);
         content.addView(hostInput, matchWrap());
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("設定 LG 電視")
-                .setMessage("輸入電視目前的區域網路 IP。也可以在電視「手機控制連線」畫面按首頁的「掃描電視 QR 並連線」。手機和電視要連同一個 Wi-Fi。")
+                .setTitle("手動設定電視 IP")
+                .setMessage("只有無法掃描 QR code 或電視 IP 改變時才需要設定。一般使用請掃描電視「手機控制連線」畫面的 QR code。手機和電視要連同一個 Wi-Fi。")
                 .setView(content)
                 .setNegativeButton("取消", null)
                 .setPositiveButton("儲存", null)
@@ -784,7 +825,10 @@ public final class MainActivity extends Activity {
         if (result != null) {
             String contents = result.getContents();
             if (contents != null) handleTvPairQr(contents);
-            else if (bridgeStatus != null) bridgeStatus.setText("掃描已取消。電視設定沒有變更。");
+            else {
+                if (bridgeStatus != null) bridgeStatus.setText("掃描已取消。電視設定沒有變更。");
+                completeControllerTvScan(false, "掃描已取消，電視設定沒有變更。");
+            }
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -802,6 +846,7 @@ public final class MainActivity extends Activity {
             }
         } catch (Exception ignored) {}
         if (!isValidTvIpv4(host)) {
+            completeControllerTvScan(false, "無法辨識這個 QR code，請掃描電視 App 的配對 QR code。");
             new AlertDialog.Builder(this)
                     .setTitle("這不是支援的電視 QR code")
                     .setMessage("請在 LG 電視 companion 的「手機控制連線」畫面重新查詢並掃描 QR code。")
@@ -820,6 +865,8 @@ public final class MainActivity extends Activity {
         launchToTv(new JSONObject(), (success, message) -> {
             if (bridgeStatus != null) bridgeStatus.setText(success
                     ? "電視已連線 · " + tvHost : "已記住電視 " + tvHost + " · " + message);
+            completeControllerTvScan(success, success
+                    ? "已啟動電視 App，正在等待連線…" : message);
             if (success) {
                 openPhoneController();
             } else {
@@ -830,6 +877,12 @@ public final class MainActivity extends Activity {
                         .show();
             }
         });
+    }
+
+    private void completeControllerTvScan(boolean success, String message) {
+        String callbackId = pendingControllerTvScanCallbackId;
+        pendingControllerTvScanCallbackId = "";
+        if (!TextUtils.isEmpty(callbackId)) postControllerLaunchResult(callbackId, success, message);
     }
 
     private boolean isValidTvIpv4(String value) {

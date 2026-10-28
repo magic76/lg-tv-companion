@@ -208,7 +208,7 @@
 
     <section class="intro" aria-labelledby="pageTitle">
       <h1 id="pageTitle">想看什麼網站？</h1>
-      <p>用收藏或輸入網址交給 LG 瀏覽器開啟，也能用手機或遙控器請 Gemini 幫你換頁。</p>
+      <p>用收藏或輸入網址交給 LG 瀏覽器開啟，也能和 Gemini 對話；請提供完整網址或使用收藏網站。</p>
     </section>
 
     <form class="search-row" id="openForm">
@@ -322,7 +322,7 @@
         <h2 id="assistantTitle">Gemini 網頁助理</h2>
         <button class="secondary-button" id="closeAssistantButton" type="button" aria-label="關閉 AI 助理">關閉</button>
       </div>
-      <p class="chat-help">說話請按「開始語音對話」；停頓 2 秒會自動送出。也可以在下方輸入文字後按「送出」。</p>
+      <p class="chat-help">目前 Gemini 搜尋已暫停；要開網站請提供完整網址或使用收藏。說話請按「開始語音對話」；停頓 2 秒會自動送出。</p>
       <p class="chat-status" id="chatStatus" role="status">尚未連線</p>
       <div class="chat-log" id="chatLog" aria-live="polite" aria-label="對話內容"></div>
       <form class="chat-entry" id="chatForm">
@@ -576,6 +576,10 @@
             receiveControllerSite(packet, socket);
             return;
           }
+          if (packet.type === 'set_gemini_key') {
+            receiveControllerGeminiKey(packet, socket);
+            return;
+          }
           if (packet.type === 'open_url') {
             var requestedUrl = String(packet.url || '').trim();
             var validUrl = requestedUrl ? strictWebUrl(requestedUrl) : '';
@@ -630,12 +634,16 @@
 
       function receiveControllerSite(packet, socket) {
         var id = String(packet.id || '').slice(0, 80);
-        var name = String(packet.name || '').trim();
-        var rawUrl = String(packet.url || '').trim();
-        var url = strictWebUrl(rawUrl);
-        if (!id || !name || name.length > 40 || rawUrl.length > 500 || !url) {
-          acknowledgeControllerText(socket, id, false, '請提供網站名稱和有效的 http 或 https 網址。');
-          return;
+        var result = storeWebsiteInFavorites(packet.name, packet.url);
+        acknowledgeControllerText(socket, id, result.accepted, result.message);
+      }
+
+      function storeWebsiteInFavorites(rawName, rawUrl) {
+        var name = String(rawName || '').trim();
+        var urlText = String(rawUrl || '').trim();
+        var url = strictWebUrl(urlText);
+        if (!name || name.length > 40 || urlText.length > 500 || !url) {
+          return { accepted: false, message: '請提供網站名稱和有效的 http 或 https 網址。' };
         }
 
         var existing = null;
@@ -643,33 +651,58 @@
           if (sites[i].url === url) { existing = sites[i]; break; }
         }
         if (existing) {
-          if (existing.name !== name) {
-            var oldName = existing.name;
-            existing.name = name;
-            try { saveSites(); }
-            catch (error) {
-              existing.name = oldName;
-              acknowledgeControllerText(socket, id, false, '電視無法儲存網站，請確認儲存空間。');
-              return;
-            }
-            renderSites();
-            acknowledgeControllerText(socket, id, true, '網站已存在，並更新了收藏名稱。');
-          } else {
-            acknowledgeControllerText(socket, id, true, '這個網站已在電視收藏清單中。');
+          if (existing.name === name) return { accepted: true, message: '這個網站已在電視收藏清單中。', name: name, url: url };
+          var oldName = existing.name;
+          existing.name = name;
+          try { saveSites(); }
+          catch (error) {
+            existing.name = oldName;
+            return { accepted: false, message: '電視無法儲存網站，請確認儲存空間。' };
           }
-          return;
+          renderSites();
+          return { accepted: true, message: '網站已存在，並更新了收藏名稱。', name: name, url: url };
         }
 
-        var site = { id: 'site-phone-' + Date.now(), name: name, url: url, icon: '↗' };
+        var site = { id: 'site-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), name: name, url: url, icon: '↗' };
         sites.push(site);
         try { saveSites(); }
         catch (error) {
           sites.pop();
-          acknowledgeControllerText(socket, id, false, '電視無法儲存網站，請確認儲存空間。');
-          return;
+          return { accepted: false, message: '電視無法儲存網站，請確認儲存空間。' };
         }
         renderSites();
-        acknowledgeControllerText(socket, id, true, '「' + name + '」已加入電視網站清單。');
+        return { accepted: true, message: '「' + name + '」已加入電視網站清單。', name: name, url: url };
+      }
+
+      function storeGeminiApiKey(rawKey) {
+        var key = String(rawKey || '').trim();
+        if (!/^[^\s]{8,2048}$/.test(key)) return false;
+        try { localStorage.setItem(GEMINI_KEY_STORAGE, key); }
+        catch (error) { return false; }
+        closeLiveSocket();
+        stopContinuousVoiceMode();
+        pendingUserTurn = null;
+        queuedPrompt = null;
+        setChatBusy(false);
+        geminiKeyInput.value = '';
+        geminiKeyStatus.textContent = '這台電視已保存一組 API 金鑰。';
+        setChatStatus('Gemini 金鑰已更新；下一次對話會使用新金鑰。');
+        return true;
+      }
+
+      function receiveControllerGeminiKey(packet, socket) {
+        var id = String(packet.id || '').trim();
+        var rawKey = String(packet.key || '').trim();
+        if (controllerSocket !== socket || !id || id.length > 80 || !/^[^\s]{8,2048}$/.test(rawKey)) {
+          acknowledgeControllerText(socket, id, false, 'Gemini API 金鑰格式無效。');
+          return;
+        }
+        if (!storeGeminiApiKey(rawKey)) {
+          acknowledgeControllerText(socket, id, false, '電視無法保存金鑰；請確認 App 儲存空間。');
+          return;
+        }
+        acknowledgeControllerText(socket, id, true, 'Gemini API 金鑰已保存在電視 App。');
+        showToast('已從手機保存 Gemini 金鑰。');
       }
 
       function receiveControllerAudioStart(socket) {
@@ -1443,7 +1476,7 @@
         var siteList = sites.map(function (site) {
           return { id: site.id, name: site.name, url: site.url };
         });
-        return '你是電視上的繁體中文網站助理。和使用者自然對話，並記住目前這段 Gemini Live 對話。使用者可以先談需求，再告訴你要開的網站。只有在使用者明確要求開啟頁面，而且目標明確時，才呼叫 openWebsite。優先使用已收藏網站清單中的 id 和網址；使用者清楚說出完整網域或網址時才可使用該網址。目標不清楚就先詢問，不要猜測或自行捏造網址。只開 http 或 https 網址。不要聲稱已開啟，除非工具回報成功。回覆請簡短、口語、使用繁體中文。已收藏網站清單：' + JSON.stringify(siteList);
+        return '你是電視上的繁體中文網站助理。和使用者自然對話，並記住目前這段 Gemini Live 對話。使用者可以先談需求，再告訴你要開的網站。若使用者只說網站名稱（例如「開 Yahoo」），而收藏清單沒有該網站，請說明目前無法即時查證網址，請使用者提供完整網址；不要猜網址。先詢問使用者要「跳轉」還是「添加到電視收藏」，絕不可在使用者確認前呼叫 openWebsite 或 addWebsiteToFavorites。使用者回答「跳轉／開啟」後，才呼叫 openWebsite 並使用已向使用者確認的網址；回答「添加／收藏」後，才呼叫 addWebsiteToFavorites，使用剛才確認的名稱與網址。若使用者一開始已清楚提供完整網址並明確要求開啟，可直接開啟；若提供網址並要求收藏，可直接收藏。優先使用已收藏網站清單中的 id 和網址。只開或收藏 http／https 網址，不要捏造網址。不要聲稱網站已開啟或收藏，除非工具回報成功。回覆請簡短、口語、使用繁體中文，且把完整網址顯示在回覆中。已收藏網站清單：' + JSON.stringify(siteList);
       }
 
       function buildLiveSetup() {
@@ -1455,18 +1488,31 @@
             outputAudioTranscription: {},
             realtimeInputConfig: { automaticActivityDetection: { disabled: true } },
             systemInstruction: { parts: [{ text: buildAssistantInstructions() }] },
-            tools: [{ functionDeclarations: [{
-              name: 'openWebsite',
-              description: '開啟使用者明確指定的已收藏網站，或使用者清楚說出的完整網址。',
-              parameters: {
-                type: 'OBJECT',
-                properties: {
-                  siteId: { type: 'STRING', description: '已收藏網站的 id。使用收藏網站時提供。' },
-                  url: { type: 'STRING', description: '使用者明確說出的完整 http 或 https 網址。' },
-                  siteName: { type: 'STRING', description: '要開啟的網站名稱。' }
+            tools: [
+              { functionDeclarations: [{
+                name: 'openWebsite',
+                description: '只有在使用者已明確確認跳轉後，才開啟已收藏網站或已向使用者確認的完整網址。',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    siteId: { type: 'STRING', description: '已收藏網站的 id。使用收藏網站時提供。' },
+                    url: { type: 'STRING', description: '已向使用者確認、要開啟的完整 http 或 https 網址。' },
+                    siteName: { type: 'STRING', description: '要開啟的網站名稱。' }
+                  }
                 }
-              }
-            }]}]
+              }, {
+                name: 'addWebsiteToFavorites',
+                description: '只有在使用者明確選擇添加或收藏後，才將已確認的網站加入電視收藏。',
+                parameters: {
+                  type: 'OBJECT',
+                  properties: {
+                    siteName: { type: 'STRING', description: '要顯示在電視收藏中的網站名稱。' },
+                    url: { type: 'STRING', description: '已向使用者確認的完整 http 或 https 網址。' }
+                  },
+                  required: ['siteName', 'url']
+                }
+              }]}
+            ]
           }
         };
         if (conversationTurns.length) setup.setup.historyConfig = { initialHistoryInClientContent: true };
@@ -1518,6 +1564,16 @@
         if (socket && liveSocket === socket) closeLiveSocket();
       }
 
+      function isGeminiQuotaError(detail) {
+        var text = typeof detail === 'string' ? detail : JSON.stringify(detail || {});
+        return /quota|resource[_ ]exhausted|rate limit|billing|exceeded/i.test(text);
+      }
+
+      function geminiQuotaMessage(code) {
+        return 'Gemini API 配額或速率限制已超限' + (code ? '（' + code + '）' : '')
+          + '。請在 Google AI Studio 查看這個專案的 API 用量、配額和帳單狀態，額度恢復後再試。';
+      }
+
       function sendQueuedPrompt() {
         if (!liveReady || !liveSocket || queuedPrompt === null) return;
         var prompt = queuedPrompt;
@@ -1551,7 +1607,10 @@
           return;
         }
         if (message.error) {
-          failChat('Gemini 拒絕連線。請確認 API 金鑰有效、已啟用 Gemini API，並檢查網路。', socket);
+          var apiErrorCode = message.error && typeof message.error === 'object' ? message.error.code : '';
+          failChat(isGeminiQuotaError(message.error)
+            ? geminiQuotaMessage(apiErrorCode)
+            : 'Gemini 拒絕連線。請確認 API 金鑰有效、已啟用 Gemini API，並檢查網路。', socket);
           return;
         }
         if (message.setupComplete) {
@@ -1636,11 +1695,17 @@
         socket.onerror = function () {
           if (liveSocket === socket) failChat('Gemini 連線失敗。請檢查電視網路和 API 金鑰。', socket);
         };
-        socket.onclose = function () {
+        socket.onclose = function (event) {
           if (liveSocket !== socket) return;
           liveSocket = null;
           liveReady = false;
-          if (chatBusy) failChat('Gemini 連線已中斷，請再送一次。');
+          var closeCode = event && event.code ? event.code : '';
+          var closeReason = event && event.reason ? event.reason : '';
+          if (chatBusy) failChat(isGeminiQuotaError(closeReason)
+            ? geminiQuotaMessage(closeCode)
+            : closeCode === 1006
+              ? 'Gemini 連線異常中斷（1006）。請確認電視網路和 API 金鑰後再試。'
+              : 'Gemini 連線已中斷' + (closeCode ? '（錯誤碼 ' + closeCode + '）' : '') + '，請再送一次。');
           else setChatStatus('連線已關閉；再次送出時會重新連線。');
         };
       }
@@ -1769,6 +1834,13 @@
             } else {
               result = { status: 'invalid_target', message: '找不到有效的已收藏網站或 http/https 網址。請先詢問使用者。' };
             }
+          } else if (call.name === 'addWebsiteToFavorites') {
+            var saveArgs = call.args || {};
+            var saved = storeWebsiteInFavorites(saveArgs.siteName, saveArgs.url);
+            result = saved.accepted
+              ? { status: 'saved', siteName: saved.name, url: saved.url, message: saved.message }
+              : { status: 'invalid_target', message: saved.message };
+            if (saved.accepted) setChatStatus(saved.message);
           } else {
             result = { status: 'unsupported_tool' };
           }
@@ -1783,7 +1855,7 @@
 
       function openAssistant() {
         if (!chatLog.children.length) {
-          appendChatMessage('你好，我可以陪你聊一聊，再依照你說的網站名稱或網址幫你開啟頁面。', 'assistant');
+          appendChatMessage('你好，目前網站搜尋已暫停。你可以提供完整網址，或請我開啟收藏中的網站。', 'assistant');
         }
         showDialog(assistantOverlay);
         setChatStatus(liveReady ? 'Gemini Live 已連線' : getGeminiKey() ? '尚未連線；送出第一句話時會連接 Gemini Live。' : '請先在設定輸入 Gemini API 金鑰。');
@@ -1879,15 +1951,15 @@
           geminiKeyInput.focus();
           return;
         }
-        try {
-          localStorage.setItem(GEMINI_KEY_STORAGE, key);
-          closeLiveSocket();
-          stopContinuousVoiceMode();
-          pendingUserTurn = null;
-          setChatBusy(false);
+        if (!/^[^\s]{8,2048}$/.test(key)) {
+          geminiKeyStatus.textContent = '金鑰長度或格式無效，請重新確認。';
+          geminiKeyInput.focus();
+          return;
+        }
+        if (storeGeminiApiKey(key)) {
           geminiKeyStatus.textContent = '金鑰已保存在這台電視。';
           showToast('Gemini API 金鑰已儲存。');
-        } catch (error) {
+        } else {
           geminiKeyStatus.textContent = '無法儲存金鑰；請確認電視 App 儲存空間。';
         }
       });

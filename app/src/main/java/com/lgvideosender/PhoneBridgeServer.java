@@ -68,6 +68,17 @@ final class PhoneBridgeServer extends WebSocketServer {
         if ("phone".equals(role)) {
             String type = packet.optString("type", "");
             String id = packet.optString("id", "").trim();
+            if ("set_gemini_key".equals(type)) {
+                String key = packet.optString("key", "").trim();
+                if (id.isEmpty() || id.length() > 80 || !key.matches("[^\\s]{8,2048}")) {
+                    sendJson(connection, ack(id, false, "Gemini API 金鑰格式無效。"));
+                } else if (!isOpen(tvPeer)) {
+                    sendJson(connection, ack(id, false, "電視 App 尚未連線。"));
+                } else {
+                    sendJson(tvPeer, json("type", "set_gemini_key", "id", id, "key", key));
+                }
+                return;
+            }
             if ("send_text".equals(type)) {
                 String text = packet.optString("text", "").trim();
                 if (id.isEmpty() || text.isEmpty() || text.length() > 2000) {

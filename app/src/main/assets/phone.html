@@ -29,14 +29,25 @@
     .card { margin: 10px 0; padding: 16px; border: 1px solid #313d4b; border-radius: 18px; background: rgba(26, 34, 45, .94); box-shadow: 0 12px 28px #0003; }
     .card h2 { margin: 0 0 10px; font-size: 17px; }
     .muted { color: var(--muted); font-size: 13px; line-height: 1.55; }
-    .connection { display: flex; align-items: center; min-height: 44px; margin: 0 0 8px; padding: 10px 13px; border: 1px solid #313d4b; border-radius: 14px; background: #1a222d; }
-    .dot { flex: 0 0 auto; width: 10px; height: 10px; margin-right: 10px; border-radius: 50%; background: #777; box-shadow: 0 0 0 4px #ffffff0d; }
+    .connection { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-height: 48px; margin: 0 0 8px; padding: 9px 11px; border: 1px solid #313d4b; border-radius: 14px; background: #1a222d; }
+    .dot { grid-column: 1; grid-row: 1 / span 2; width: 10px; height: 10px; border-radius: 50%; background: #777; box-shadow: 0 0 0 4px #ffffff0d; }
     .dot.online { background: #77dfaf; box-shadow: 0 0 12px #77dfaf66; }
+    .connection-copy { grid-column: 2; display: grid; min-width: 0; gap: 2px; }
     #connectionText { color: #e5eaf1; font-size: 13px; line-height: 1.4; }
+    #connectionDetail { color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .connection-action { grid-column: 3; grid-row: 1 / span 2; min-width: 82px; min-height: 44px; max-width: 136px; padding: 8px 10px; border: 0; border-radius: 10px; color: #111815; background: var(--accent); font-size: 12px; font-weight: 800; line-height: 1.2; }
+    .connection-action:disabled { cursor: wait; opacity: .6; }
+    .connection-action[hidden] { display: none; }
     .connection-settings { margin: 0 0 10px; border: 1px solid #313d4b; border-radius: 14px; background: #1a222d; }
     .connection-settings summary { min-height: 46px; padding: 13px 14px; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
     .connection-settings[open] { padding-bottom: 12px; }
     .connection-settings[open] > :not(summary) { margin-right: 13px; margin-left: 13px; }
+    .key-transfer-form { display: grid; gap: 10px; }
+    .key-transfer-form label { color: var(--muted); font-size: 13px; }
+    .key-transfer-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 7px; }
+    .key-transfer-row input { min-width: 0; min-height: 50px; border: 1px solid #3a4655; border-radius: 11px; padding: 11px 12px; color: #fff; background: #0e1319; font-size: 16px; }
+    .key-transfer-row button { min-height: 50px; padding: 10px 12px; border: 1px solid #465360; border-radius: 10px; color: #e7edf4; background: #28313c; }
+    .key-transfer-form > .action-button { width: 100%; }
     .address-list { margin: 10px 0; display: grid; gap: 8px; }
     .address-chip { display: block; overflow-wrap: anywhere; padding: 10px 12px; border-radius: 10px; background: #10151c; color: var(--accent); font-size: 14px; }
     .code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
@@ -80,7 +91,7 @@
     .keyboard-tools textarea { min-height: 92px; margin-top: 9px; }
     .keyboard-tools .remote-actions { margin-top: 9px; }
     #copyButton { flex: 0 0 auto; min-height: 44px; padding: 8px 11px; border: 1px solid #465360; border-radius: 10px; color: #e7edf4; background: #28313c; font-size: 13px; }
-    @media (max-width: 380px) { .page { padding-right: 13px; padding-left: 13px; } .card { padding: 14px; } .launch-actions { grid-template-columns: 1fr; } .code-row { flex-wrap: wrap; } }
+    @media (max-width: 380px) { .page { padding-right: 13px; padding-left: 13px; } .card { padding: 14px; } .launch-actions { grid-template-columns: 1fr; } .code-row { flex-wrap: wrap; } .connection { column-gap: 8px; padding-right: 8px; padding-left: 10px; } .connection-action { min-width: 76px; max-width: 108px; padding-right: 7px; padding-left: 7px; font-size: 11px; } }
   </style>
 </head>
 <body>
@@ -95,12 +106,16 @@
 
     <section class="connection" id="connection" aria-live="polite">
       <span class="dot" id="connectionDot"></span>
-      <span id="connectionText">正在連接手機橋接服務…</span>
+      <div class="connection-copy">
+        <span id="connectionText">正在連接手機橋接服務…</span>
+        <span id="connectionDetail"></span>
+      </div>
+      <button class="connection-action" id="connectTvButton" type="button" hidden>連線電視</button>
     </section>
 
     <details class="connection-settings">
-      <summary>連線設定與配對資訊</summary>
-      <p class="muted">手機和電視要連同一個 Wi-Fi。連線位址和配對碼只在需要重新連線時使用。</p>
+      <summary>進階排錯資訊</summary>
+      <p class="muted">一般使用不需要操作這些資料。只有自動連線失敗、需要手動排錯時才使用；手機和電視需在同一個 Wi-Fi。</p>
       <div class="address-list" id="addressList"><span class="address-chip">正在讀取本機網路位址…</span></div>
       <div class="code-row">
         <span class="code-label">本次連線碼</span>
@@ -118,6 +133,20 @@
     </nav>
 
     <section class="tab-panel" id="panelAi" role="tabpanel" aria-labelledby="tabAi">
+      <details class="connection-settings">
+        <summary>從手機設定 Gemini 金鑰</summary>
+        <p class="muted">金鑰會傳到電視並保存在電視 App，手機不保存；傳送會取代電視目前的金鑰。傳輸未加密，請只在信任的 Wi‑Fi 使用。</p>
+        <form class="key-transfer-form" id="geminiKeyTransferForm">
+          <label for="geminiKeyTransferInput">Gemini API 金鑰
+            <span class="key-transfer-row">
+              <input id="geminiKeyTransferInput" type="password" maxlength="2048" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="貼上 API 金鑰">
+              <button id="toggleGeminiKeyVisibility" type="button">顯示</button>
+            </span>
+          </label>
+          <button class="action-button primary" id="sendGeminiKeyButton" type="submit" disabled>儲存到電視</button>
+        </form>
+        <p class="status" id="geminiKeyTransferStatus" role="status">等待電視 App 連線…</p>
+      </details>
       <section class="card" aria-labelledby="replyTitle">
         <h2 id="replyTitle">電視上的 AI 回應</h2>
         <div class="reply" id="replyText">AI 回應會同步顯示在這裡和電視畫面。</div>
@@ -208,9 +237,12 @@
       var socket = null;
       var tvOnline = false;
       var phoneOnline = false;
+      var connectionFeedback = '';
+      var geminiKeyTransferFeedback = '';
       var reconnectTimer = null;
       var pendingMessages = {};
       var pendingSiteAdds = {};
+      var pendingGeminiKeyTransfers = {};
       var pendingNativeLaunches = {};
       var launchInProgress = false;
       var audioContext = null;
@@ -237,9 +269,15 @@
       var pairCode = document.getElementById('pairCode');
       var connectionDot = document.getElementById('connectionDot');
       var connectionText = document.getElementById('connectionText');
+      var connectionDetail = document.getElementById('connectionDetail');
+      var connectTvButton = document.getElementById('connectTvButton');
       var replyText = document.getElementById('replyText');
       var messageInput = document.getElementById('messageInput');
       var sendButton = document.getElementById('sendButton');
+      var geminiKeyTransferForm = document.getElementById('geminiKeyTransferForm');
+      var geminiKeyTransferInput = document.getElementById('geminiKeyTransferInput');
+      var sendGeminiKeyButton = document.getElementById('sendGeminiKeyButton');
+      var geminiKeyTransferStatus = document.getElementById('geminiKeyTransferStatus');
       var addSiteForm = document.getElementById('addSiteForm');
       var siteNameInput = document.getElementById('siteNameInput');
       var siteUrlInput = document.getElementById('siteUrlInput');
@@ -267,13 +305,25 @@
       function updateConnection() {
         var connected = phoneOnline && tvOnline;
         connectionDot.classList.toggle('online', connected);
-        connectionText.textContent = !phoneOnline ? '手機控制頁尚未連上本機橋接' : tvOnline ? '電視已連線，可以傳訊息、語音或新增網站' : '手機橋接已啟動，等待電視 app';
+        var needsPairing = !!(config && !config.tvConfigured);
+        connectionText.textContent = !phoneOnline ? '正在連接手機橋接服務…' : tvOnline ? '電視 App 已連線' : needsPairing ? '手機已就緒，先連接電視' : '手機已就緒，電視尚未連線';
+        if (tvOnline) connectionFeedback = '連線完成，現在可以開始使用。';
+        else if (!phoneOnline) connectionFeedback = '';
+        connectionDetail.textContent = connectionFeedback || (phoneOnline && needsPairing
+          ? '第一次使用：掃描電視 App 顯示的 QR code。'
+          : phoneOnline ? '按右側按鈕即可啟動電視 App 並連線。' : '');
+        connectTvButton.hidden = !phoneOnline || tvOnline;
+        connectTvButton.disabled = !phoneOnline || launchInProgress;
+        connectTvButton.textContent = launchInProgress ? '正在連線…' : needsPairing ? '掃描電視 QR' : '連線電視';
         sendButton.disabled = !connected;
+        sendGeminiKeyButton.disabled = !connected || !geminiKeyTransferInput.value.trim() || Object.keys(pendingGeminiKeyTransfers).length > 0;
+        if (!geminiKeyTransferFeedback) geminiKeyTransferStatus.textContent = connected
+          ? '只有按「儲存到電視」才會傳送金鑰。'
+          : phoneOnline ? '先連線電視，再傳送金鑰。' : '等待手機橋接服務…';
         addSiteButton.disabled = !connected || Object.keys(pendingSiteAdds).length > 0;
         launchAppButton.disabled = !phoneOnline || launchInProgress;
         playMediaButton.disabled = !phoneOnline || launchInProgress;
         voiceButton.disabled = !connected || !audioSupported || (audioState !== 'idle' && audioState !== 'recording');
-        voiceButton.textContent = audioState === 'recording' ? '完成語音並送出' : audioState === 'waiting_reply' ? 'Gemini 回覆中…' : audioState === 'waiting_for_tv' || audioState === 'requesting' ? '正在連線…' : audioSupported ? '🎙 開始直接語音' : '此瀏覽器不支援直接語音';
         pointerConnectButton.disabled = !config || !config.tvConfigured || pointerConnecting || pointerConnected;
         pointerConnectButton.textContent = pointerConnected ? '已連線' : pointerConnecting ? '連線中…' : '連線觸控板';
         Array.prototype.forEach.call(document.querySelectorAll('[data-pointer-button]'), function (button) {
@@ -281,6 +331,13 @@
         });
         sendRemoteTextButton.disabled = !pointerConnected || imeRequestPending || !remoteTextInput.value.trim();
         sendRemoteEnterButton.disabled = !pointerConnected || imeRequestPending;
+        if (audioState === 'recording') voiceButton.textContent = '完成語音並送出';
+        else if (audioState === 'waiting_reply') voiceButton.textContent = 'Gemini 回覆中…';
+        else if (audioState === 'waiting_for_tv' || audioState === 'requesting') voiceButton.textContent = '正在連線…';
+        else if (!audioSupported) voiceButton.textContent = '此瀏覽器不支援直接語音';
+        else if (!phoneOnline) voiceButton.textContent = '等待手機橋接服務';
+        else if (!tvOnline) voiceButton.textContent = '先連線電視即可使用語音';
+        else voiceButton.textContent = '🎙 開始直接語音';
       }
 
       function setStatus(message) {
@@ -289,6 +346,47 @@
 
       function setSiteStatus(message) {
         siteStatus.textContent = message;
+      }
+
+      function sendGeminiKey() {
+        var key = geminiKeyTransferInput.value.trim();
+        if (key.length < 8 || key.length > 2048 || /\s/.test(key)) {
+          geminiKeyTransferFeedback = '請貼上有效的 Gemini API 金鑰。';
+          geminiKeyTransferStatus.textContent = geminiKeyTransferFeedback;
+          geminiKeyTransferInput.focus();
+          return;
+        }
+        if (!socket || socket.readyState !== WebSocket.OPEN || !tvOnline) {
+          geminiKeyTransferFeedback = '請先連線電視，再傳送金鑰。';
+          geminiKeyTransferStatus.textContent = geminiKeyTransferFeedback;
+          return;
+        }
+
+        var id = makeId();
+        pendingGeminiKeyTransfers[id] = {
+          timer: window.setTimeout(function () {
+            if (!pendingGeminiKeyTransfers[id]) return;
+            delete pendingGeminiKeyTransfers[id];
+            updateConnection();
+            geminiKeyTransferFeedback = '電視沒有確認保存；請重新輸入金鑰再試。';
+            geminiKeyTransferStatus.textContent = geminiKeyTransferFeedback;
+          }, 20000)
+        };
+        try {
+          socket.send(JSON.stringify({ type: 'set_gemini_key', id: id, key: key }));
+          geminiKeyTransferInput.value = '';
+          geminiKeyTransferInput.type = 'password';
+          document.getElementById('toggleGeminiKeyVisibility').textContent = '顯示';
+          geminiKeyTransferFeedback = '金鑰已送出，等待電視保存…';
+          geminiKeyTransferStatus.textContent = geminiKeyTransferFeedback;
+          updateConnection();
+        } catch (error) {
+          window.clearTimeout(pendingGeminiKeyTransfers[id].timer);
+          delete pendingGeminiKeyTransfers[id];
+          geminiKeyTransferFeedback = '傳送失敗；請確認電視已連線後重試。';
+          geminiKeyTransferStatus.textContent = geminiKeyTransferFeedback;
+          updateConnection();
+        }
       }
 
       function launchTvApp() {
@@ -315,6 +413,62 @@
           launchAppStatus.textContent = message || '已要求電視啟動 App。';
         }).catch(function (error) {
           launchAppStatus.textContent = error && error.message ? error.message : '啟動失敗；請確認電視已開機並允許手機控制。';
+        }).then(function () {
+          launchInProgress = false;
+          updateConnection();
+        });
+      }
+
+      function connectTvApp() {
+        if (!phoneOnline || tvOnline || launchInProgress) return;
+        launchInProgress = true;
+        connectionFeedback = config && !config.tvConfigured ? '正在開啟 QR 掃描器…' : '正在啟動電視 App…';
+        updateConnection();
+        if (config && !config.tvConfigured) {
+          connectionFeedback = '請把電視停在「手機控制連線」QR code 畫面，接著用手機掃描。';
+          connectionDetail.textContent = connectionFeedback;
+          setStatus('請把電視停在「手機控制連線」QR code 畫面，接著用手機掃描。');
+          if (!window.AndroidBridge || typeof window.AndroidBridge.scanAndConnectTv !== 'function') {
+            launchInProgress = false;
+            connectionFeedback = '請回 Companion 首頁按「掃描 QR 並連線」。';
+            updateConnection();
+            setStatus(connectionFeedback);
+            return;
+          }
+          var scanId = makeId();
+          pendingNativeLaunches[scanId] = {
+            resolve: function (message) {
+              launchInProgress = false;
+              if (config) config.tvConfigured = true;
+              connectionFeedback = message || '已啟動電視 App，正在等待連線…';
+              updateConnection();
+              setStatus(connectionFeedback);
+            },
+            reject: function (error) {
+              launchInProgress = false;
+              connectionFeedback = error && error.message ? error.message : '掃描或連線失敗，請重試。';
+              updateConnection();
+              setStatus(connectionFeedback);
+            }
+          };
+          try { window.AndroidBridge.scanAndConnectTv(scanId); }
+          catch (error) {
+            delete pendingNativeLaunches[scanId];
+            launchInProgress = false;
+            connectionFeedback = error && error.message ? error.message : '無法開啟 QR 掃描器。';
+            updateConnection();
+            setStatus(connectionFeedback);
+          }
+          return;
+        }
+
+        setStatus('正在啟動電視 App 並連線…');
+        nativeLaunch({}).then(function (message) {
+          connectionFeedback = (message || '已要求電視啟動 App。') + ' 等待電視連線…';
+          setStatus(connectionFeedback);
+        }).catch(function (error) {
+          connectionFeedback = error && error.message ? error.message : '連線電視失敗，請確認電視已開機並允許手機控制。';
+          setStatus(connectionFeedback);
         }).then(function () {
           launchInProgress = false;
           updateConnection();
@@ -367,6 +521,8 @@
         if (success) pending.resolve(message);
         else pending.reject(new Error(message || '電視啟動失敗。'));
       };
+
+      connectTvButton.addEventListener('click', connectTvApp);
 
       function makeId() {
         return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
@@ -829,21 +985,36 @@
           if (socket !== current) return;
           phoneOnline = true;
           updateConnection();
-          setStatus('已連上手機 APK 橋接服務，等待電視 app。');
+            setStatus(config && !config.tvConfigured
+              ? '手機已就緒；第一次使用請按上方「掃描電視 QR」。'
+              : '手機已就緒；按上方「連線電視」即可開始。');
         };
         current.onmessage = function (event) {
           if (socket !== current || typeof event.data !== 'string') return;
           var packet;
           try { packet = JSON.parse(event.data); } catch (error) { return; }
           if (packet.type === 'state') {
+            var previousTvOnline = tvOnline;
             phoneOnline = !!packet.phoneConnected;
             tvOnline = !!packet.tvConnected;
+            if (previousTvOnline && !tvOnline) connectionFeedback = '';
             if (!tvOnline && audioState !== 'idle') stopPhoneAudio(false, '電視連線中斷，語音已停止。');
             updateConnection();
             if (tvOnline) setStatus('電視已連線，可以送出訊息。');
+            else if (previousTvOnline) setStatus('電視連線中斷，按上方「連線電視」重新連線。');
             return;
           }
           if (packet.type === 'ack') {
+            var pendingGeminiKeyTransfer = pendingGeminiKeyTransfers[packet.id];
+            if (pendingGeminiKeyTransfer) {
+              window.clearTimeout(pendingGeminiKeyTransfer.timer);
+              delete pendingGeminiKeyTransfers[packet.id];
+              geminiKeyTransferFeedback = packet.message || (packet.accepted
+                ? '金鑰已保存在電視 App。' : '電視沒有接受這組金鑰。');
+              geminiKeyTransferStatus.textContent = geminiKeyTransferFeedback;
+              updateConnection();
+              return;
+            }
             var pendingSite = pendingSiteAdds[packet.id];
             if (pendingSite) {
               window.clearTimeout(pendingSite.timer);
@@ -978,6 +1149,21 @@
       document.getElementById('sendForm').addEventListener('submit', function (event) {
         event.preventDefault();
         sendText(messageInput.value);
+      });
+
+      geminiKeyTransferForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        sendGeminiKey();
+      });
+      geminiKeyTransferInput.addEventListener('input', function () {
+        geminiKeyTransferFeedback = '';
+        updateConnection();
+      });
+      document.getElementById('toggleGeminiKeyVisibility').addEventListener('click', function () {
+        var show = geminiKeyTransferInput.type === 'password';
+        geminiKeyTransferInput.type = show ? 'text' : 'password';
+        this.textContent = show ? '隱藏' : '顯示';
+        geminiKeyTransferInput.focus();
       });
 
       addSiteForm.addEventListener('submit', function (event) {
