@@ -21,6 +21,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Message;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.Html;
@@ -126,11 +127,13 @@ public final class MainActivity extends Activity {
     private String pendingSharedUrl = "";
     private volatile boolean controllerPageLoaded;
     private LinearLayout browserRoot;
+    private FrameLayout browserWebContainer;
     private TextView pageStatus;
     private TextView playbackInfo;
     private TextView emptyCandidates;
     private LinearLayout candidateRows;
     private WebView webView;
+    private WebView mediaPopupWebView;
     private String webUserAgent;
     private boolean pageLoaded;
     private final Runnable playbackInfoPoller = new Runnable() {
@@ -263,13 +266,27 @@ public final class MainActivity extends Activity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         webUserAgent = settings.getUserAgentString();
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return false;
+                String url = request.getUrl().toString();
+                if (isPyppoUrl(url)) {
+                    pageStatus.setText("已略過播放器的廣告跳轉，保留目前頁面。");
+                    return true;
+                }
+                if (!isIntentUrl(url)) return false;
+                String fallback = resolveIntentFallback(url);
+                if (fallback == null) {
+                    pageStatus.setText("這個 intent:// 連結沒有可用的 http 或 https 備用網址。");
+                } else {
+                    loadPage(fallback);
+                }
+                return true;
             }
 
             @Override
@@ -294,8 +311,127 @@ public final class MainActivity extends Activity {
                 if (request.isForMainFrame()) pageStatus.setText("網頁載入失敗：" + error.getDescription());
             }
         });
-        browserRoot.addView(webView, new LinearLayout.LayoutParams(
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                if (!isUserGesture || browserWebContainer == null || webView == null
+                        || !(resultMsg.obj instanceof WebView.WebViewTransport)) return false;
+
+                disposeMediaPopup(mediaPopupWebView);
+                WebView popup = new WebView(MainActivity.this);
+                WebSettings popupSettings = popup.getSettings();
+                popupSettings.setJavaScriptEnabled(true);
+                popupSettings.setDomStorageEnabled(true);
+                popupSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+                popupSettings.setSupportMultipleWindows(true);
+                popupSettings.setMediaPlaybackRequiresUserGesture(false);
+                popupSettings.setUserAgentString(webUserAgent);
+                CookieManager.getInstance().setAcceptThirdPartyCookies(popup, true);
+                popup.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView popupView, WebResourceRequest request) {
+                        return routeMediaPopupUrl(popupView, request.getUrl().toString());
+                    }
+
+                    @Override
+                    @SuppressWarnings("deprecation")
+                    public boolean shouldOverrideUrlLoading(WebView popupView, String url) {
+                        return routeMediaPopupUrl(popupView, url);
+                    }
+                });
+                mediaPopupWebView = popup;
+                browserWebContainer.addView(popup, 0, new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                popup.setAlpha(0f);
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(popup);
+                resultMsg.sendToTarget();
+                return true;
+            }
+        });
+        browserWebContainer = new FrameLayout(this);
+        browserWebContainer.addView(webView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        browserRoot.addView(browserWebContainer, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+    }
+
+    private boolean routeMediaPopupUrl(WebView popup, String url) {
+        if ("about:blank".equalsIgnoreCase(url)) return false;
+        if (isPyppoUrl(url)) {
+            disposeMediaPopup(popup);
+            if (pageStatus != null) pageStatus.setText("已略過播放器的廣告跳轉，保留目前頁面。");
+            return true;
+        }
+        String normalized = normalizeHttpUrl(url, 8192);
+        if (normalized == null && isIntentUrl(url)) normalized = resolveIntentFallback(url);
+        if (normalized == null) {
+            disposeMediaPopup(popup);
+            if (pageStatus != null) {
+                pageStatus.setText(isIntentUrl(url)
+                        ? "這個 intent:// 連結沒有可用的 http 或 https 備用網址。"
+                        : "這個連結不是 http 或 https 網址，影片偵測頁無法開啟。");
+            }
+            return true;
+        }
+        disposeMediaPopup(popup);
+        if (webView != null) loadPage(normalized);
+        return true;
+    }
+
+    private boolean isIntentUrl(String url) {
+        return url != null && url.regionMatches(true, 0, "intent:", 0, 7);
+    }
+
+    private boolean isPyppoUrl(String url) {
+        if (url == null) return false;
+        String candidate = normalizeHttpUrl(url, 8192);
+        if (candidate == null && isIntentUrl(url)) {
+            try {
+                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                Uri data = intent.getData();
+                if (isPyppoHost(data == null ? null : data.getHost())) return true;
+            } catch (Exception ignored) {}
+            candidate = resolveIntentFallback(url);
+        }
+        return candidate != null && isPyppoHost(Uri.parse(candidate).getHost());
+    }
+
+    private boolean isPyppoHost(String host) {
+        if (host == null) return false;
+        String suffix = ".pyppo.com";
+        return host.equalsIgnoreCase("pyppo.com")
+                || (host.length() > suffix.length()
+                && host.regionMatches(true, host.length() - suffix.length(), suffix, 0, suffix.length()));
+    }
+
+    private String resolveIntentFallback(String url) {
+        if (!isIntentUrl(url)) return null;
+        try {
+            Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+            String fallback = normalizeHttpUrl(intent.getStringExtra("browser_fallback_url"), 8192);
+            if (fallback != null) return fallback;
+            Uri data = intent.getData();
+            String resolvedData = normalizeHttpUrl(data == null ? null : data.toString(), 8192);
+            if (resolvedData != null) return resolvedData;
+        } catch (Exception ignored) {}
+
+        // Some sites emit a plain intent://host/path URL without Chrome's #Intent; metadata.
+        if (url.regionMatches(true, 0, "intent://", 0, 9) && !url.contains("#Intent;")) {
+            String httpsUrl = "https://" + url.substring(9).replace(" ", "%20");
+            return normalizeHttpUrl(httpsUrl, 8192);
+        }
+        return null;
+    }
+
+    private void disposeMediaPopup(WebView popup) {
+        if (popup == null) return;
+        if (mediaPopupWebView == popup) mediaPopupWebView = null;
+        popup.stopLoading();
+        if (popup.getParent() instanceof ViewGroup) {
+            ((ViewGroup) popup.getParent()).removeView(popup);
+        }
+        popup.destroy();
     }
 
     private void applySystemBarInsets(View content) {
@@ -1618,6 +1754,10 @@ public final class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (browserRoot != null && browserRoot.getVisibility() == View.VISIBLE) {
+            if (mediaPopupWebView != null) {
+                disposeMediaPopup(mediaPopupWebView);
+                return;
+            }
             if (webView != null && webView.canGoBack()) webView.goBack();
             else showControllerScreen();
             return;
@@ -1655,6 +1795,7 @@ public final class MainActivity extends Activity {
             controllerWebView.destroy();
             controllerWebView = null;
         }
+        disposeMediaPopup(mediaPopupWebView);
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
