@@ -10,8 +10,8 @@ android {
         applicationId 'com.lgcompanion'
         minSdk 24
         targetSdk 35
-        versionCode 27
-        versionName '1.4.18'
+        versionCode 35
+        versionName '1.4.26'
     }
 
     compileOptions {

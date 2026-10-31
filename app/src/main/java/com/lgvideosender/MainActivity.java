@@ -13,6 +13,10 @@ import android.graphics.Typeface;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.ColorDrawable;
 import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -39,6 +43,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.view.TextureView;
 import android.view.Window;
 import android.view.WindowManager;
@@ -46,18 +51,27 @@ import android.util.Log;
 
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
 import java.net.InetAddress;
+import java.net.Inet4Address;
 import java.net.HttpURLConnection;
 import java.net.NetworkInterface;
 import java.net.InetSocketAddress;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InterfaceAddress;
 import java.net.ServerSocket;
 import java.net.URI;
 import java.net.URL;
@@ -105,15 +119,13 @@ public final class MainActivity extends Activity {
     private int bridgePort = 8787;
     private volatile TvPointerClient pointerClient;
     private volatile WebView controllerWebView;
-    private Dialog controllerDialog;
     private volatile String pendingControllerTvScanCallbackId = "";
     private PermissionRequest pendingWebPermission;
 
-    private EditText urlInput;
-    private LinearLayout homeRoot;
+    private FrameLayout controllerRoot;
+    private String pendingSharedUrl = "";
+    private volatile boolean controllerPageLoaded;
     private LinearLayout browserRoot;
-    private TextView bridgeStatus;
-    private TextView homePageStatus;
     private TextView pageStatus;
     private TextView playbackInfo;
     private TextView emptyCandidates;
@@ -133,11 +145,13 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         initializePairingCode();
         startBridgeServer();
         buildUi();
+        openPhoneController();
         handleIncomingIntent(getIntent());
         refreshBridgeStatus();
     }
@@ -153,175 +167,37 @@ public final class MainActivity extends Activity {
         FrameLayout screen = new FrameLayout(this);
         screen.setBackgroundColor(BG);
 
-        ScrollView homeScroll = new ScrollView(this);
-        homeScroll.setFillViewport(true);
-        homeRoot = new LinearLayout(this);
-        homeRoot.setOrientation(LinearLayout.VERTICAL);
-        homeRoot.setPadding(dp(18), dp(16), dp(18), dp(24));
-        homeScroll.addView(homeRoot, new ScrollView.LayoutParams(
+        controllerRoot = new FrameLayout(this);
+        controllerRoot.setBackgroundColor(BG);
+        screen.addView(controllerRoot, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        screen.addView(homeScroll, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        TextView title = new TextView(this);
-        title.setText("LG 電視 companion");
-        title.setTextColor(TEXT);
-        title.setTextSize(24);
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        homeRoot.addView(title, matchWrap());
-
-        TextView intro = new TextView(this);
-        intro.setText("手機控制電視、開啟網站，或把影片送到電視。");
-        intro.setTextColor(MUTED);
-        intro.setTextSize(15);
-        intro.setPadding(0, dp(5), 0, dp(18));
-        homeRoot.addView(intro, matchWrap());
-
-        bridgeStatus = new TextView(this);
-        bridgeStatus.setText("手機橋接服務啟動中…");
-        bridgeStatus.setTextColor(TEXT);
-        bridgeStatus.setTextSize(14);
-        bridgeStatus.setPadding(dp(14), dp(13), dp(14), dp(13));
-        bridgeStatus.setBackgroundColor(PANEL);
-        LinearLayout.LayoutParams statusParams = matchWrap();
-        statusParams.bottomMargin = dp(14);
-        homeRoot.addView(bridgeStatus, statusParams);
-
-        LinearLayout quickActions = new LinearLayout(this);
-        quickActions.setOrientation(LinearLayout.HORIZONTAL);
-        quickActions.setGravity(Gravity.CENTER_VERTICAL);
-        Button controllerButton = new Button(this);
-        controllerButton.setText("控制電視");
-        controllerButton.setAllCaps(false);
-        controllerButton.setMinHeight(dp(58));
-        controllerButton.setTextColor(BG);
-        controllerButton.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
-        controllerButton.setOnClickListener(view -> openPhoneController());
-        LinearLayout.LayoutParams controllerParams = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        controllerParams.rightMargin = dp(8);
-        quickActions.addView(controllerButton, controllerParams);
-        Button scanTvButton = new Button(this);
-        scanTvButton.setText("掃描電視 QR 配對");
-        scanTvButton.setAllCaps(false);
-        scanTvButton.setMinHeight(dp(58));
-        scanTvButton.setTextColor(TEXT);
-        scanTvButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
-        scanTvButton.setOnClickListener(view -> scanTvQrCode());
-        quickActions.addView(scanTvButton, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        homeRoot.addView(quickActions, matchWrap());
-
-        TextView setupHint = new TextView(this);
-        setupHint.setText("首次使用時，掃描電視「手機控制連線」畫面的 QR code。之後打開控制頁，按「連線電視」即可。手機和電視需使用同一個 Wi‑Fi。");
-        setupHint.setTextColor(MUTED);
-        setupHint.setTextSize(13);
-        setupHint.setPadding(dp(2), dp(8), dp(2), dp(10));
-        homeRoot.addView(setupHint, matchWrap());
-
-        Button advancedSettingsToggle = new Button(this);
-        advancedSettingsToggle.setText("進階設定　⌄");
-        advancedSettingsToggle.setAllCaps(false);
-        advancedSettingsToggle.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-        advancedSettingsToggle.setMinHeight(dp(44));
-        advancedSettingsToggle.setTextColor(MUTED);
-        advancedSettingsToggle.setBackgroundTintList(ColorStateList.valueOf(BG));
-        homeRoot.addView(advancedSettingsToggle, matchWrap());
-
-        LinearLayout advancedSettings = new LinearLayout(this);
-        advancedSettings.setOrientation(LinearLayout.VERTICAL);
-        advancedSettings.setVisibility(View.GONE);
-        advancedSettings.setPadding(dp(12), dp(4), dp(12), dp(10));
-        TextView advancedHint = new TextView(this);
-        advancedHint.setText("一般不需要手動設定。QR 無法使用或電視 IP 改變時，才手動輸入 IP。");
-        advancedHint.setTextColor(MUTED);
-        advancedHint.setTextSize(13);
-        advancedSettings.addView(advancedHint, matchWrap());
-        Button tvSettingsButton = new Button(this);
-        tvSettingsButton.setText("手動輸入電視 IP");
-        tvSettingsButton.setAllCaps(false);
-        tvSettingsButton.setMinHeight(dp(48));
-        tvSettingsButton.setTextColor(TEXT);
-        tvSettingsButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
-        tvSettingsButton.setOnClickListener(view -> openTvSettings());
-        LinearLayout.LayoutParams manualIpParams = matchWrap();
-        manualIpParams.topMargin = dp(6);
-        advancedSettings.addView(tvSettingsButton, manualIpParams);
-        homeRoot.addView(advancedSettings, matchWrap());
-        advancedSettingsToggle.setOnClickListener(view -> {
-            boolean show = advancedSettings.getVisibility() != View.VISIBLE;
-            advancedSettings.setVisibility(show ? View.VISIBLE : View.GONE);
-            advancedSettingsToggle.setText(show ? "進階設定　⌃" : "進階設定　⌄");
-        });
-
-        TextView videoTitle = new TextView(this);
-        videoTitle.setText("找影片並投放");
-        videoTitle.setTextColor(TEXT);
-        videoTitle.setTextSize(20);
-        videoTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        homeRoot.addView(videoTitle, matchWrap());
-
-        TextView videoHint = new TextView(this);
-        videoHint.setText("貼上影片網頁，手機會開啟頁面並偵測可播放的來源。");
-        videoHint.setTextColor(MUTED);
-        videoHint.setTextSize(14);
-        videoHint.setPadding(0, dp(5), 0, dp(12));
-        homeRoot.addView(videoHint, matchWrap());
-
-        urlInput = new EditText(this);
-        urlInput.setSingleLine(true);
-        urlInput.setTextColor(TEXT);
-        urlInput.setHintTextColor(MUTED);
-        urlInput.setHint("貼上影片網頁網址");
-        urlInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        urlInput.setImeOptions(EditorInfo.IME_ACTION_GO);
-        urlInput.setMinHeight(dp(54));
-        urlInput.setPadding(dp(12), dp(8), dp(12), dp(8));
-        homeRoot.addView(urlInput, matchWrap());
-
-        Button openButton = new Button(this);
-        openButton.setText("在手機開啟網頁");
-        openButton.setAllCaps(false);
-        openButton.setMinHeight(dp(56));
-        openButton.setTextColor(BG);
-        openButton.setBackgroundTintList(ColorStateList.valueOf(ACCENT));
-        openButton.setOnClickListener(view -> openEnteredUrl());
-        LinearLayout.LayoutParams openParams = matchWrap();
-        openParams.topMargin = dp(8);
-        homeRoot.addView(openButton, openParams);
-        urlInput.setOnEditorActionListener((view, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE) {
-                openEnteredUrl();
-                return true;
-            }
-            return false;
-        });
-
-        homePageStatus = new TextView(this);
-        homePageStatus.setText("網頁開啟後，按播放即可查看偵測到的影片來源。");
-        homePageStatus.setTextColor(MUTED);
-        homePageStatus.setTextSize(13);
-        homePageStatus.setPadding(dp(2), dp(8), dp(2), 0);
-        homeRoot.addView(homePageStatus, matchWrap());
 
         browserRoot = new LinearLayout(this);
         browserRoot.setOrientation(LinearLayout.VERTICAL);
         browserRoot.setPadding(dp(12), dp(8), dp(12), dp(8));
         browserRoot.setBackgroundColor(BG);
         browserRoot.setVisibility(View.GONE);
+        screen.addView(browserRoot, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        buildMediaBrowserUi();
 
+        setContentView(screen);
+        applySystemBarInsets(screen);
+    }
+
+    private void buildMediaBrowserUi() {
         LinearLayout browserHeader = new LinearLayout(this);
         browserHeader.setGravity(Gravity.CENTER_VERTICAL);
         Button backButton = new Button(this);
-        backButton.setText("‹ 返回");
+        backButton.setText("‹ 返回控制");
         backButton.setAllCaps(false);
         backButton.setTextColor(TEXT);
         backButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
-        backButton.setOnClickListener(view -> showHomeScreen());
+        backButton.setOnClickListener(view -> showControllerScreen());
         browserHeader.addView(backButton, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)));
         TextView browserTitle = new TextView(this);
-        browserTitle.setText("影片網頁");
+        browserTitle.setText("手機影片來源偵測");
         browserTitle.setTextColor(TEXT);
         browserTitle.setTextSize(17);
         browserTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -420,19 +296,26 @@ public final class MainActivity extends Activity {
         });
         browserRoot.addView(webView, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-
-        screen.addView(browserRoot, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        setContentView(screen);
     }
 
-    private void showHomeScreen() {
-        if (homeRoot != null) homeRoot.setVisibility(View.VISIBLE);
+    private void applySystemBarInsets(View content) {
+        ViewCompat.setOnApplyWindowInsetsListener(content, (view, windowInsets) -> {
+            Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.displayCutout());
+            Insets ime = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
+            view.setPadding(bars.left, bars.top, bars.right, Math.max(bars.bottom, ime.bottom));
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(content);
+    }
+
+    private void showControllerScreen() {
+        if (controllerRoot != null) controllerRoot.setVisibility(View.VISIBLE);
         if (browserRoot != null) browserRoot.setVisibility(View.GONE);
     }
 
     private void showBrowserScreen() {
-        if (homeRoot != null) homeRoot.setVisibility(View.GONE);
+        if (controllerRoot != null) controllerRoot.setVisibility(View.GONE);
         if (browserRoot != null) browserRoot.setVisibility(View.VISIBLE);
         if (webView != null) webView.onResume();
     }
@@ -461,24 +344,17 @@ public final class MainActivity extends Activity {
                 if (message.startsWith("App 內橋接已啟動")) {
                     bridgeReady = true;
                     bridgeStartupError = null;
+                    refreshBridgeStatus();
                 } else {
                     bridgeStartupError = message;
                     bridgeReady = false;
-                }
-                if (bridgeStatus != null) {
-                    if (bridgeReady) {
-                        String host = configuredTvHost();
-                        bridgeStatus.setText("手機橋接已啟動 · Port " + bridgePort
-                                + (host.isEmpty() ? " · 尚未設定電視" : " · 電視 " + host));
-                    } else {
-                        bridgeStatus.setText(message);
-                    }
+                    setControllerStatus(message);
                 }
             }), bridgePort);
             bridgeServer.start();
         } catch (Exception error) {
             bridgeStartupError = "App 內橋接啟動失敗：" + error.getMessage();
-            if (bridgeStatus != null) bridgeStatus.setText(bridgeStartupError);
+            setControllerStatus(bridgeStartupError);
         }
     }
 
@@ -499,11 +375,33 @@ public final class MainActivity extends Activity {
         try {
             config.put("port", bridgePort);
             config.put("pairCode", pairCode);
-            config.put("tvConfigured", !configuredTvHost().isEmpty());
+            String host = configuredTvHost();
+            config.put("tvConfigured", !host.isEmpty());
+            config.put("tvHost", host);
+            config.put("tvMac", tvPreferences().getString("tv_mac", ""));
+            config.put("bridgeReady", bridgeReady);
+            config.put("bridgeStatus", bridgeStartupError == null ? "" : bridgeStartupError);
             config.put("addresses", addressList.json());
             config.put("phoneSocketUrl", "ws://localhost:" + bridgePort + "/ws");
         } catch (Exception ignored) {}
         return config;
+    }
+
+    private String currentControllerStatus() {
+        if (!TextUtils.isEmpty(bridgeStartupError)) return bridgeStartupError;
+        String host = configuredTvHost();
+        return (bridgeReady ? "手機控制服務已就緒" : "手機控制服務啟動中…")
+                + (host.isEmpty() ? " · 尚未設定電視" : " · 電視 " + host);
+    }
+
+    private void setControllerStatus(String message) {
+        WebView current = controllerWebView;
+        if (current == null || TextUtils.isEmpty(message)) return;
+        current.post(() -> {
+            if (current != controllerWebView) return;
+            current.evaluateJavascript("window.onNativeBridgeStatus && window.onNativeBridgeStatus("
+                    + JSONObject.quote(message) + ");", null);
+        });
     }
 
     private List<String> getLanAddresses() {
@@ -538,7 +436,12 @@ public final class MainActivity extends Activity {
     }
 
     private void openPhoneController() {
-        if (controllerDialog != null && controllerDialog.isShowing()) return;
+        if (controllerWebView != null) {
+            if (controllerRoot != null) controllerRoot.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (controllerRoot == null) return;
+
         controllerWebView = new WebView(this);
         controllerWebView.setBackgroundColor(BG);
         WebSettings settings = controllerWebView.getSettings();
@@ -552,6 +455,18 @@ public final class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return !"localhost".equalsIgnoreCase(request.getUrl().getHost());
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                controllerPageLoaded = true;
+                setControllerStatus(currentControllerStatus());
+                if (!TextUtils.isEmpty(pendingSharedUrl)) {
+                    String sharedUrl = pendingSharedUrl;
+                    pendingSharedUrl = "";
+                    view.evaluateJavascript("window.setSharedMediaUrl && window.setSharedMediaUrl("
+                            + JSONObject.quote(sharedUrl) + ");", null);
+                }
             }
         });
         controllerWebView.setWebChromeClient(new WebChromeClient() {
@@ -579,44 +494,17 @@ public final class MainActivity extends Activity {
                 if (pendingWebPermission == request) pendingWebPermission = null;
             }
         });
+        controllerRoot.addView(controllerWebView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        controllerRoot.setVisibility(View.VISIBLE);
 
-        controllerDialog = new Dialog(this);
-        controllerDialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        controllerDialog.setContentView(controllerWebView);
-        controllerDialog.setOnDismissListener(ignored -> {
-            if (pendingWebPermission != null) {
-                try { pendingWebPermission.deny(); } catch (Exception ignoredPermission) {}
-                pendingWebPermission = null;
-            }
-            if (controllerWebView != null) {
-                controllerWebView.stopLoading();
-                controllerWebView.destroy();
-                controllerWebView = null;
-            }
-            TvPointerClient activePointer = pointerClient;
-            pointerClient = null;
-            if (activePointer != null) activePointer.close();
-            controllerDialog = null;
-        });
-        Window dialogWindow = controllerDialog.getWindow();
-        if (dialogWindow != null) WindowCompat.setDecorFitsSystemWindows(dialogWindow, true);
-        controllerDialog.show();
-        Window window = controllerDialog.getWindow();
-        if (window != null) {
-            window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
-            window.setBackgroundDrawable(new ColorDrawable(BG));
-            window.getDecorView().setBackgroundColor(BG);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            WindowManager.LayoutParams windowParams = window.getAttributes();
-            windowParams.dimAmount = 0.35f;
-            window.setAttributes(windowParams);
-        }
         try (InputStream input = getAssets().open("phone.html")) {
             String html = readBody(input);
             controllerWebView.loadDataWithBaseURL("http://localhost/", html, "text/html", "UTF-8", null);
         } catch (Exception error) {
-            if (controllerWebView != null) controllerWebView.loadDataWithBaseURL("http://localhost/",
-                    "<meta charset=\"utf-8\"><p>無法載入內建手機控制頁：" + error.getMessage() + "</p>",
+            String message = error.getMessage() == null ? "未知錯誤" : error.getMessage();
+            controllerWebView.loadDataWithBaseURL("http://localhost/",
+                    "<meta charset=\"utf-8\"><p>無法載入手機控制頁：" + message + "</p>",
                     "text/html", "UTF-8", null);
         }
     }
@@ -659,6 +547,69 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void openMediaScanner(String url, String callbackId) {
+            String normalized = normalizeHttpUrl(url, 2048);
+            if (normalized == null) {
+                postControllerLaunchResult(callbackId, false, "請輸入有效的 http 或 https 網址。");
+                return;
+            }
+            mainHandler.post(() -> {
+                if (webView == null) {
+                    postControllerLaunchResult(callbackId, false, "手機影片瀏覽器尚未準備好，請重試。");
+                    return;
+                }
+                loadPage(normalized);
+                postControllerLaunchResult(callbackId, true, "已在手機開啟影片來源偵測。");
+            });
+        }
+
+        @JavascriptInterface
+        public void saveTvHost(String host, String callbackId) {
+            mainHandler.post(() -> {
+                String normalized = host == null ? "" : host.trim();
+                boolean valid = normalized.length() <= 253
+                        && normalized.matches("(?i)^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")
+                        && !normalized.contains("..");
+                if (valid && normalized.matches("[0-9.]+")) valid = isValidTvIpv4(normalized);
+                if (!valid) {
+                    postControllerSettingsResult(callbackId, false, "請輸入有效的電視 IP 或主機名稱。");
+                    return;
+                }
+                String oldHost = tvPreferences().getString("tv_host", "");
+                SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", normalized);
+                if (!normalized.equalsIgnoreCase(oldHost)) editor.remove("tv_client_key").remove("tv_mac");
+                editor.apply();
+                setControllerStatus("電視位址已儲存：" + normalized);
+                postControllerSettingsResult(callbackId, true, "電視位址已儲存。請確認手機和電視使用同一個 Wi-Fi。");
+            });
+        }
+
+        @JavascriptInterface
+        public void saveTvMac(String mac, String callbackId) {
+            mainHandler.post(() -> {
+                String normalized = normalizeMac(mac);
+                if (normalized.isEmpty()) {
+                    postControllerSettingsResult(callbackId, false, "請輸入有效的 MAC 位址。");
+                    return;
+                }
+                tvPreferences().edit().putString("tv_mac", normalized).apply();
+                postControllerSettingsResult(callbackId, true, "電視喚醒位址已儲存。");
+            });
+        }
+
+        @JavascriptInterface
+        public void wakeTv(String callbackId) {
+            mainHandler.post(() -> {
+                String mac = normalizeMac(tvPreferences().getString("tv_mac", ""));
+                if (mac.isEmpty()) {
+                    postControllerSettingsResult(callbackId, false, "先掃描電視 QR；如果 QR 沒有 MAC，請在下方填入電視 MAC。");
+                    return;
+                }
+                sendWakeOnLan(mac, callbackId);
+            });
+        }
+
+        @JavascriptInterface
         public void connectPointer() {
             try { beginPointerConnection(); }
             catch (Throwable error) {
@@ -666,6 +617,11 @@ public final class MainActivity extends Activity {
                 String detail = TextUtils.isEmpty(error.getMessage()) ? error.getClass().getSimpleName() : error.getMessage();
                 postControllerPointerStatus(false, "觸控板初始化例外（" + detail + "）。請重試。");
             }
+        }
+
+        @JavascriptInterface
+        public void disconnectPointer() {
+            stopPointerClient(null);
         }
 
         private void beginPointerConnection() {
@@ -756,6 +712,13 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void stopPointerClient(String message) {
+        TvPointerClient activePointer = pointerClient;
+        pointerClient = null;
+        if (activePointer != null) activePointer.close();
+        if (!TextUtils.isEmpty(message)) postControllerPointerStatus(false, message);
+    }
+
     private void postControllerImeStatus(String callbackId, boolean success, String message) {
         mainHandler.post(() -> {
             if (controllerWebView == null) return;
@@ -776,38 +739,121 @@ public final class MainActivity extends Activity {
         });
     }
 
-    private void openTvSettings() {
-        EditText hostInput = new EditText(this);
-        hostInput.setSingleLine(true);
-        hostInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        hostInput.setHint("例如 192.168.x.x");
-        hostInput.setText(configuredTvHost());
-        hostInput.setSelection(hostInput.getText().length());
-        int padding = dp(20);
-        LinearLayout content = new LinearLayout(this);
-        content.setPadding(padding, dp(8), padding, 0);
-        content.addView(hostInput, matchWrap());
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("手動設定電視 IP")
-                .setMessage("只有無法掃描 QR code 或電視 IP 改變時才需要設定。一般使用請掃描電視「手機控制連線」畫面的 QR code。手機和電視要連同一個 Wi-Fi。")
-                .setView(content)
-                .setNegativeButton("取消", null)
-                .setPositiveButton("儲存", null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-            String host = hostInput.getText().toString().trim();
-            if (!host.matches("(?i)^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$")) {
-                hostInput.setError("請輸入電視 IP 或主機名稱");
-                return;
+    private void postControllerSettingsResult(String callbackId, boolean success, String message) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeSettingsResult && window.onNativeSettingsResult("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + ","
+                    + success + "," + JSONObject.quote(message == null ? "" : message) + ","
+                    + bridgeConfig().toString() + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
+    private static String normalizeMac(String value) {
+        if (value == null) return "";
+        String mac = value.trim().replace('-', ':').toUpperCase(Locale.ROOT);
+        if (!mac.matches("[0-9A-F]{2}(:[0-9A-F]{2}){5}")
+                || "00:00:00:00:00:00".equals(mac)
+                || "FF:FF:FF:FF:FF:FF".equals(mac)) return "";
+        return mac;
+    }
+
+    private void rememberTvMacFromArp(String host) {
+        try {
+            String ip = InetAddress.getByName(host).getHostAddress();
+            try (BufferedReader reader = new BufferedReader(new FileReader("/proc/net/arp"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] fields = line.trim().split("\\s+");
+                    if (fields.length >= 4 && ip.equals(fields[0])) {
+                        String mac = normalizeMac(fields[3]);
+                        if (!mac.isEmpty()) {
+                            tvPreferences().edit().putString("tv_mac", mac).apply();
+                            return;
+                        }
+                    }
+                }
             }
-            String oldHost = tvPreferences().getString("tv_host", "");
-            SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", host);
-            if (!host.equalsIgnoreCase(oldHost)) editor.remove("tv_client_key");
-            editor.apply();
-            dialog.dismiss();
-            bridgeStatus.setText("電視已設定：" + host + " · 準備啟動並連線");
-        }));
-        dialog.show();
+        } catch (Exception ignored) {
+            // Android may hide ARP entries; manual MAC entry remains available.
+        }
+    }
+
+    private void sendWakeOnLan(String rawMac, String callbackId) {
+        String mac = normalizeMac(rawMac);
+        if (mac.isEmpty()) {
+            postControllerSettingsResult(callbackId, false, "請先設定有效的電視 MAC 位址。");
+            return;
+        }
+        setControllerStatus("正在送出 Wi-Fi 喚醒訊號…");
+        network.execute(() -> {
+            try {
+                ConnectivityManager connectivity = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+                Network wifiNetwork = null;
+                if (connectivity != null) {
+                    for (Network candidate : connectivity.getAllNetworks()) {
+                        NetworkCapabilities capabilities = connectivity.getNetworkCapabilities(candidate);
+                        if (capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                            wifiNetwork = candidate;
+                            break;
+                        }
+                    }
+                }
+                if (wifiNetwork == null) throw new IllegalStateException("手機目前沒有連上 Wi-Fi。");
+
+                Set<InetAddress> destinations = new LinkedHashSet<>();
+                LinkProperties linkProperties = connectivity.getLinkProperties(wifiNetwork);
+                if (linkProperties != null && !TextUtils.isEmpty(linkProperties.getInterfaceName())) {
+                    NetworkInterface wifiInterface = NetworkInterface.getByName(linkProperties.getInterfaceName());
+                    if (wifiInterface != null && wifiInterface.isUp()) {
+                        for (InterfaceAddress interfaceAddress : wifiInterface.getInterfaceAddresses()) {
+                            InetAddress broadcast = interfaceAddress.getBroadcast();
+                            if (broadcast instanceof Inet4Address) destinations.add(broadcast);
+                        }
+                    }
+                }
+                destinations.add(InetAddress.getByName("255.255.255.255"));
+
+                byte[] macBytes = new byte[6];
+                String[] octets = mac.split(":");
+                for (int index = 0; index < macBytes.length; index++) {
+                    macBytes[index] = (byte) Integer.parseInt(octets[index], 16);
+                }
+                byte[] packet = new byte[6 + 16 * macBytes.length];
+                for (int index = 0; index < 6; index++) packet[index] = (byte) 0xFF;
+                for (int repeat = 0; repeat < 16; repeat++) {
+                    System.arraycopy(macBytes, 0, packet, 6 + repeat * macBytes.length, macBytes.length);
+                }
+
+                int sent = 0;
+                try (DatagramSocket socket = new DatagramSocket()) {
+                    socket.setBroadcast(true);
+                    wifiNetwork.bindSocket(socket);
+                    for (InetAddress destination : destinations) {
+                        for (int repeat = 0; repeat < 3; repeat++) {
+                            socket.send(new DatagramPacket(packet, packet.length, destination, 9));
+                            sent++;
+                        }
+                    }
+                }
+                if (sent == 0) throw new IllegalStateException("沒有可用的 Wi-Fi 廣播位址。");
+                mainHandler.post(() -> {
+                    String message = "已送出 Wi-Fi 喚醒封包。請確認電視已開啟 Mobile TV On。";
+                    setControllerStatus(message);
+                    Toast.makeText(this, "已送出電視喚醒訊號", Toast.LENGTH_SHORT).show();
+                    postControllerSettingsResult(callbackId, true, message);
+                });
+            } catch (Exception error) {
+                String message = TextUtils.isEmpty(error.getMessage())
+                        ? "Wi-Fi 喚醒訊號送出失敗。" : error.getMessage();
+                mainHandler.post(() -> {
+                    setControllerStatus(message);
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                    postControllerSettingsResult(callbackId, false, message);
+                });
+            }
+        });
     }
 
     private void scanTvQrCode() {
@@ -826,7 +872,7 @@ public final class MainActivity extends Activity {
             String contents = result.getContents();
             if (contents != null) handleTvPairQr(contents);
             else {
-                if (bridgeStatus != null) bridgeStatus.setText("掃描已取消。電視設定沒有變更。");
+                setControllerStatus("掃描已取消。電視設定沒有變更。");
                 completeControllerTvScan(false, "掃描已取消，電視設定沒有變更。");
             }
             return;
@@ -836,46 +882,39 @@ public final class MainActivity extends Activity {
 
     private void handleTvPairQr(String contents) {
         String host = null;
+        String mac = "";
         try {
             Uri pairing = Uri.parse(contents.trim());
+            String version = pairing.getQueryParameter("v");
             if (pairing.isHierarchical()
                     && "lgcompanion".equalsIgnoreCase(pairing.getScheme())
                     && "pair".equalsIgnoreCase(pairing.getHost())
-                    && "1".equals(pairing.getQueryParameter("v"))) {
+                    && ("1".equals(version) || "2".equals(version))) {
                 host = pairing.getQueryParameter("host");
+                mac = normalizeMac(pairing.getQueryParameter("mac"));
             }
         } catch (Exception ignored) {}
         if (!isValidTvIpv4(host)) {
-            completeControllerTvScan(false, "無法辨識這個 QR code，請掃描電視 App 的配對 QR code。");
-            new AlertDialog.Builder(this)
-                    .setTitle("這不是支援的電視 QR code")
-                    .setMessage("請在 LG 電視 companion 的「手機控制連線」畫面重新查詢並掃描 QR code。")
-                    .setPositiveButton("好", null)
-                    .show();
+            String message = "無法辨識這個 QR code，請掃描電視 App 的配對 QR code。";
+            setControllerStatus(message);
+            completeControllerTvScan(false, message);
             return;
         }
 
         final String tvHost = host;
+        final String tvMac = mac;
         String oldHost = tvPreferences().getString("tv_host", "");
         SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", tvHost);
-        if (!tvHost.equalsIgnoreCase(oldHost)) editor.remove("tv_client_key");
+        if (!tvHost.equalsIgnoreCase(oldHost)) editor.remove("tv_client_key").remove("tv_mac");
+        if (!tvMac.isEmpty()) editor.putString("tv_mac", tvMac);
         editor.apply();
-        if (bridgeStatus != null) bridgeStatus.setText("已掃描到電視 " + tvHost + "，正在連線…");
+        setControllerStatus("已掃描到電視 " + tvHost
+                + (tvMac.isEmpty() ? "，正在連線…" : "（已記錄 MAC），正在連線…"));
 
         launchToTv(new JSONObject(), (success, message) -> {
-            if (bridgeStatus != null) bridgeStatus.setText(success
-                    ? "電視已連線 · " + tvHost : "已記住電視 " + tvHost + " · " + message);
+            setControllerStatus(success ? "電視已連線 · " + tvHost : "已記住電視 " + tvHost + " · " + message);
             completeControllerTvScan(success, success
                     ? "已啟動電視 App，正在等待連線…" : message);
-            if (success) {
-                openPhoneController();
-            } else {
-                new AlertDialog.Builder(this)
-                        .setTitle("已讀取電視 QR code")
-                        .setMessage(message + "\n\n電視 IP 已儲存；確認手機和電視連上同一個 Wi‑Fi 後，可以再按「控制電視」。")
-                        .setPositiveButton("好", null)
-                        .show();
-            }
         });
     }
 
@@ -943,6 +982,7 @@ public final class MainActivity extends Activity {
                         (success, message, returnedKey) -> {
                             if (!TextUtils.isEmpty(returnedKey)) tvPreferences().edit()
                                     .putString("tv_client_key", returnedKey).apply();
+                            if (success) rememberTvMacFromArp(host);
                             mainHandler.post(() -> callback.onResult(success, message));
                         });
                 boolean connected = client.connectBlocking(10, TimeUnit.SECONDS);
@@ -1154,8 +1194,13 @@ public final class MainActivity extends Activity {
             if (stream != null) shared = stream.toString();
         }
         String url = firstHttpUrl(shared);
-        if (url != null && urlInput != null) {
-            urlInput.setText(url);
+        if (url != null) {
+            pendingSharedUrl = url;
+            if (controllerWebView != null && controllerPageLoaded) {
+                controllerWebView.evaluateJavascript("window.setSharedMediaUrl && window.setSharedMediaUrl("
+                        + JSONObject.quote(url) + ");", null);
+                pendingSharedUrl = "";
+            }
             loadPage(url);
         }
     }
@@ -1169,23 +1214,6 @@ public final class MainActivity extends Activity {
             url = url.substring(0, url.length() - 1);
         }
         return url;
-    }
-
-    private void openEnteredUrl() {
-        String url = urlInput.getText().toString().trim();
-        if (url.isEmpty()) {
-            homePageStatus.setText("請先貼上影片網頁網址。");
-            return;
-        }
-        if (!url.matches("(?i)^https?://.+")) url = "https://" + url;
-        Uri parsed = Uri.parse(url);
-        if (!"http".equalsIgnoreCase(parsed.getScheme()) && !"https".equalsIgnoreCase(parsed.getScheme())) {
-            homePageStatus.setText("網址必須使用 http 或 https。");
-            return;
-        }
-        urlInput.setText(url);
-        homePageStatus.setText("正在開啟影片網頁…");
-        loadPage(url);
     }
 
     private void loadPage(String url) {
@@ -1555,10 +1583,7 @@ public final class MainActivity extends Activity {
     }
 
     private void refreshBridgeStatus() {
-        String host = configuredTvHost();
-        String state = bridgeStartupError != null ? bridgeStartupError : bridgeReady
-                ? "手機橋接已啟動 · Port " + bridgePort : "手機橋接服務啟動中…";
-        bridgeStatus.setText(state + (host.isEmpty() ? " · 尚未設定電視" : " · 電視 " + host));
+        setControllerStatus(currentControllerStatus());
     }
 
     private void sendToTv(String mediaUrl) {
@@ -1594,7 +1619,7 @@ public final class MainActivity extends Activity {
     public void onBackPressed() {
         if (browserRoot != null && browserRoot.getVisibility() == View.VISIBLE) {
             if (webView != null && webView.canGoBack()) webView.goBack();
-            else showHomeScreen();
+            else showControllerScreen();
             return;
         }
         super.onBackPressed();
@@ -1603,6 +1628,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onPause() {
         mainHandler.removeCallbacks(playbackInfoPoller);
+        stopPointerClient("手機 App 進入背景，觸控板已暫停；回到遙控器頁會自動重連。");
         super.onPause();
     }
 
@@ -1610,12 +1636,25 @@ public final class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (pageLoaded) mainHandler.post(playbackInfoPoller);
+        WebView activeControllerWebView = controllerWebView;
+        if (activeControllerWebView != null) {
+            activeControllerWebView.post(() -> activeControllerWebView.evaluateJavascript(
+                    "window.onNativeAppForegrounded && window.onNativeAppForegrounded();", null));
+        }
     }
 
     @Override
     protected void onDestroy() {
         mainHandler.removeCallbacks(playbackInfoPoller);
-        if (controllerDialog != null && controllerDialog.isShowing()) controllerDialog.dismiss();
+        if (pendingWebPermission != null) {
+            try { pendingWebPermission.deny(); } catch (Exception ignored) {}
+            pendingWebPermission = null;
+        }
+        if (controllerWebView != null) {
+            controllerWebView.stopLoading();
+            controllerWebView.destroy();
+            controllerWebView = null;
+        }
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();

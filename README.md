@@ -10,12 +10,12 @@
 | `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、接收手機控制和支援的影片串流 |
 | `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-目前安裝檔版本分開管理：Android `1.4.18`，webOS TV `1.4.12`。
+目前安裝檔版本分開管理：Android `1.4.26`，webOS TV `1.4.14`。
 
 ## 下載
 
-- [Android companion APK v1.4.18](releases/LGTVCompanion-Android-v1.4.18.apk) — debug 簽名，供自行安裝，不是 Play Store 發行版。
-- [LG webOS TV IPK v1.4.12](releases/com.example.hellotv_1.4.12_all.ipk)
+- [Android companion APK v1.4.26](releases/LGTVCompanion-Android-v1.4.26.apk) — debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [LG webOS TV IPK v1.4.14](releases/com.example.hellotv_1.4.14_all.ipk)
 - [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 
 ## 初次設定
@@ -30,6 +30,8 @@
 ## 功能與限制
 
 - 手機可控制電視游標、輸入文字、開啟網址、編輯網站收藏，也能把支援的影片串流交給電視播放。
+- 切到「遙控器」分頁時會自動連線觸控板；離開分頁或手機 App 進入背景時會暫停，回到遙控器分頁自動恢復。已連線後若短暫掉線，會逐步重試。
+- Android companion 可送出 Wi-Fi Wake-on-LAN 喚醒封包。電視需接著電源，並在 `一般 → Mobile TV On → Turn on via Wi-Fi` 開啟允許；新版 TV App 會嘗試在配對 QR code 附上電視 MAC，若系統不提供則可從進階設定手動輸入。此方式使用通用 Magic Packet，能否喚醒仍取決於電視韌體和路由器網路設定；目前尚未在目標電視上實測。
 - Gemini Live 可在電視上對話並開啟收藏網站或使用者提供的完整網址。webOS v1.4.12 暫時停用 Gemini Google Search grounding，用來對照配額問題；手機 companion 可傳送文字或手機麥克風音訊，並可把 Gemini 金鑰送到電視保存。
 - 影片投放適用於網頁能公開取得的 MP4/HLS 等串流。DRM、登入限制、blob URL 或依賴特殊 cookie/header 的影片可能無法播放。這不是手機全螢幕鏡像功能。
 - 手機與電視需要在同一個區域網路。電視型號、webOS 版本和網站播放器可能影響相容性。

@@ -352,7 +352,6 @@
       </div>
       <video class="media-player-video" id="mediaPlayerVideo" controls autoplay playsinline></video>
       <div class="media-player-foot">
-        <button class="primary-button" id="mediaPlayerToggle" type="button">播放／暫停</button>
         <span>使用遙控器操作播放器；按返回鍵離開</span>
       </div>
     </div>
@@ -381,6 +380,8 @@
       var sites = readSites();
       var editingId = null;
       var activeDialog = null;
+      var dialogReturnFocus = null;
+      var mediaPlayerReturnFocus = null;
       var toastTimer = null;
       var liveSocket = null;
       var controllerSocket = null;
@@ -440,7 +441,6 @@
       var mediaPlayerVideo = document.getElementById('mediaPlayerVideo');
       var mediaPlayerTitle = document.getElementById('mediaPlayerTitle');
       var mediaPlayerStatus = document.getElementById('mediaPlayerStatus');
-      var mediaPlayerToggle = document.getElementById('mediaPlayerToggle');
 
       function readSites() {
         try {
@@ -852,7 +852,73 @@
         window.setTimeout(function () { document.getElementById('controllerReconnectButton').focus(); }, 50);
       }
 
-      function renderTvPairQr(host) {
+      function normalizeMacAddress(value) {
+        var mac = String(value || '').trim().replace(/-/g, ':').toLowerCase();
+        return /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(mac) ? mac : '';
+      }
+
+      function getMacFromNetworkResponse(response, activeType) {
+        if (!response) return '';
+        var primary = activeType === 'Wi-Fi'
+          ? [response.wifiInfo, response.wifi]
+          : [response.wiredInfo, response.wired];
+        var secondary = activeType === 'Wi-Fi'
+          ? [response.wiredInfo, response.wired]
+          : [response.wifiInfo, response.wifi];
+        var values = primary.concat(secondary);
+        for (var i = 0; i < values.length; i++) {
+          var item = values[i];
+          var mac = normalizeMacAddress(item && (item.macAddress || item.mac));
+          if (mac) return mac;
+        }
+        return '';
+      }
+
+      function readTvMacAddress(activeType, statusResponse, callback) {
+        var directMac = getMacFromNetworkResponse(statusResponse, activeType);
+        if (directMac) {
+          callback(directMac);
+          return;
+        }
+        var services = [
+          'luna://com.palm.connectionmanager',
+          'luna://com.webos.service.connectionmanager'
+        ];
+        var serviceIndex = 0;
+        var completed = false;
+        var timeout = window.setTimeout(function () { finish(''); }, 3000);
+        function finish(mac) {
+          if (completed) return;
+          completed = true;
+          window.clearTimeout(timeout);
+          callback(normalizeMacAddress(mac));
+        }
+        function tryNextService() {
+          if (completed) return;
+          if (serviceIndex >= services.length) {
+            finish('');
+            return;
+          }
+          var serviceUri = services[serviceIndex++];
+          try {
+            webOS.service.request(serviceUri, {
+              method: 'getinfo',
+              parameters: {},
+              onSuccess: function (response) {
+                var mac = getMacFromNetworkResponse(response, activeType);
+                if (mac) finish(mac);
+                else tryNextService();
+              },
+              onFailure: tryNextService
+            });
+          } catch (error) {
+            tryNextService();
+          }
+        }
+        tryNextService();
+      }
+
+      function renderTvPairQr(host, mac) {
         tvPairQrCode.textContent = '';
         tvPairQrCard.hidden = true;
         if (!host || typeof qrcode !== 'function') {
@@ -861,11 +927,16 @@
         }
         try {
           var qr = qrcode(0, 'M');
-          qr.addData('lgcompanion://pair?host=' + encodeURIComponent(host) + '&v=1');
+          var pairUrl = 'lgcompanion://pair?host=' + encodeURIComponent(host) + '&v=1';
+          var normalizedMac = normalizeMacAddress(mac);
+          if (normalizedMac) pairUrl += '&mac=' + encodeURIComponent(normalizedMac);
+          qr.addData(pairUrl);
           qr.make();
           tvPairQrCode.innerHTML = qr.createSvgTag(5, 20, '電視配對 QR code');
           tvPairQrCard.hidden = false;
-          tvPairQrStatus.textContent = 'QR code 只包含電視區網 IP；不會包含配對密碼或 Gemini 金鑰。';
+          tvPairQrStatus.textContent = normalizedMac
+            ? 'QR code 包含電視區網 IP 和 MAC，讓手機自動設定 Wi-Fi 喚醒；不含配對密碼或 Gemini 金鑰。'
+            : 'QR code 目前只包含電視區網 IP；此電視未回報 MAC，手機端可能需要手動設定。';
         } catch (error) {
           tvPairQrStatus.textContent = 'QR code 產生失敗，請使用上方顯示的電視 IP 手動設定。';
         }
@@ -903,19 +974,35 @@
                 { label: '有線', value: response && response.wired }
               ];
               var addresses = [];
+              var qrHost = '';
+              var activeType = '';
               connections.forEach(function (connection) {
                 var item = connection.value;
                 var address = item && String(item.ipAddress || '').trim();
                 if (item && item.state === 'connected' && isUsableIPv4(address)) {
                   addresses.push(connection.label + ' ' + address);
+                  if (!qrHost) {
+                    qrHost = address;
+                    activeType = connection.label;
+                  }
                 }
               });
               tvNetworkIp.textContent = addresses.length ? addresses.join('　/　') : '目前沒有連線';
               tvNetworkIpStatus.textContent = addresses.length
-                ? '這是電視目前的區網 IP；路由器重新分配位址後可能會變更。'
+                ? '正在讀取目前網路介面的 MAC，供手機自動設定 Wi-Fi 喚醒。'
                 : '請確認電視已連上 Wi-Fi 或網路線，再重新查詢。';
-              renderTvPairQr(addresses.length ? addresses[0].split(' ').pop() : '');
-              refreshTvNetworkIpButton.disabled = false;
+              if (!qrHost) {
+                renderTvPairQr('', '');
+                refreshTvNetworkIpButton.disabled = false;
+                return;
+              }
+              readTvMacAddress(activeType, response, function (mac) {
+                renderTvPairQr(qrHost, mac);
+                tvNetworkIpStatus.textContent = mac
+                  ? '已讀取電視 IP 和 MAC；掃描 QR 後手機會自動記住喚醒位址。'
+                  : '已讀取電視 IP，但 webOS 沒有提供 MAC；請從路由器裝置清單查詢。';
+                refreshTvNetworkIpButton.disabled = false;
+              });
             },
             onFailure: function () {
               tvNetworkIp.textContent = '查詢失敗';
@@ -1055,7 +1142,11 @@
           try { mediaPlayerVideo.load(); } catch (error) {}
         }
         if (mediaPlayerOverlay) mediaPlayerOverlay.hidden = true;
-        addressInput.focus();
+        var returnFocus = mediaPlayerReturnFocus || dialogReturnFocus;
+        mediaPlayerReturnFocus = null;
+        dialogReturnFocus = null;
+        if (returnFocus && returnFocus.getClientRects().length) returnFocus.focus();
+        else focusFirst();
       }
 
       function startMediaPlayback() {
@@ -1063,11 +1154,11 @@
           var result = mediaPlayerVideo.play();
           if (result && typeof result.catch === 'function') {
             result.catch(function () {
-              mediaPlayerStatus.textContent = '電視尚未開始播放，請按「播放／暫停」。';
+              mediaPlayerStatus.textContent = '電視尚未開始播放，請在影片控制列按播放。';
             });
           }
         } catch (error) {
-          mediaPlayerStatus.textContent = '電視尚未開始播放，請按「播放／暫停」。';
+          mediaPlayerStatus.textContent = '電視尚未開始播放，請在影片控制列按播放。';
         }
       }
 
@@ -1077,14 +1168,15 @@
           showToast('收到的影片網址無效。');
           return;
         }
-        closeVisibleDialog(false);
+        mediaPlayerReturnFocus = activeDialog ? dialogReturnFocus : document.activeElement;
+        closeVisibleDialog(false, false);
         mediaPlayerOverlay.hidden = false;
         mediaPlayerTitle.textContent = String(title || '').trim() || hostLabel(mediaUrl);
         mediaPlayerStatus.textContent = '正在連接影片來源…';
         mediaPlayerVideo.src = mediaUrl;
         try { mediaPlayerVideo.load(); } catch (error) {}
         window.setTimeout(function () {
-          mediaPlayerToggle.focus();
+          mediaPlayerVideo.focus();
           startMediaPlayback();
         }, 100);
       }
@@ -1096,11 +1188,11 @@
         mediaPlayerStatus.textContent = '正在播放';
       });
       mediaPlayerVideo.addEventListener('pause', function () {
-        if (mediaPlayerVideo.ended) mediaPlayerStatus.textContent = '播放已結束；按「播放／暫停」可重播。';
+        if (mediaPlayerVideo.ended) mediaPlayerStatus.textContent = '播放已結束；在影片控制列按播放可重播。';
         else if (!mediaPlayerOverlay.hidden) mediaPlayerStatus.textContent = '已暫停';
       });
       mediaPlayerVideo.addEventListener('ended', function () {
-        mediaPlayerStatus.textContent = '播放已結束；按「播放／暫停」可重播。';
+        mediaPlayerStatus.textContent = '播放已結束；在影片控制列按播放可重播。';
       });
       mediaPlayerVideo.addEventListener('waiting', function () {
         mediaPlayerStatus.textContent = '正在緩衝…';
@@ -1111,10 +1203,6 @@
         mediaPlayerStatus.textContent = message;
       });
       document.getElementById('mediaPlayerClose').addEventListener('click', closeMediaPlayer);
-      mediaPlayerToggle.addEventListener('click', function () {
-        if (mediaPlayerVideo.paused) startMediaPlayback();
-        else mediaPlayerVideo.pause();
-      });
 
       function parseAppLaunchParams(value) {
         if (!value) return null;
@@ -1171,14 +1259,15 @@
       }
 
       function showDialog(element, replaceCurrent) {
-        closeVisibleDialog(false);
+        if (!activeDialog) dialogReturnFocus = document.activeElement;
+        closeVisibleDialog(false, false);
         element.hidden = false;
         activeDialog = element;
         if (replaceCurrent) history.replaceState({ webTvDialog: true }, '', '#dialog');
         else history.pushState({ webTvDialog: true }, '', '#dialog');
       }
 
-      function closeVisibleDialog(goBack) {
+      function closeVisibleDialog(goBack, restoreFocus) {
         if (!activeDialog) return;
         var old = activeDialog;
         activeDialog = null;
@@ -1186,6 +1275,12 @@
         if (old === assistantOverlay) {
           stopContinuousVoiceMode();
           stopVoiceRecognition();
+        }
+        if (restoreFocus !== false) {
+          var returnFocus = dialogReturnFocus;
+          dialogReturnFocus = null;
+          if (returnFocus && returnFocus.getClientRects().length) returnFocus.focus();
+          else if (addressInput) addressInput.focus();
         }
         if (goBack && location.hash === '#dialog') history.back();
       }
@@ -1859,7 +1954,7 @@
         }
         showDialog(assistantOverlay);
         setChatStatus(liveReady ? 'Gemini Live 已連線' : getGeminiKey() ? '尚未連線；送出第一句話時會連接 Gemini Live。' : '請先在設定輸入 Gemini API 金鑰。');
-        window.setTimeout(function () { continuousVoiceButton.focus(); }, 60);
+        window.setTimeout(function () { chatInput.focus(); }, 60);
       }
 
       function loadGeminiKeySetting() {
@@ -1869,8 +1964,21 @@
         geminiKeyStatus.textContent = getGeminiKey() ? '這台電視已保存一組 API 金鑰。' : '尚未保存 API 金鑰。';
       }
 
+      function getActiveModal() {
+        return !mediaPlayerOverlay.hidden ? mediaPlayerOverlay : activeDialog;
+      }
+
+      function getFocusableElements(scope) {
+        if (!scope) return [];
+        return Array.prototype.slice.call(scope.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], video[controls], [tabindex]:not([tabindex="-1"])')).filter(function (node) {
+          return !node.closest('[hidden], [aria-hidden="true"]') && node.getClientRects().length > 0;
+        });
+      }
+
       function focusFirst() {
-        var target = document.querySelector('button:not([disabled]), input:not([disabled])');
+        var modal = getActiveModal();
+        var target = modal ? getFocusableElements(modal)[0] : grid.querySelector('.site-open');
+        if (!target) target = addressInput;
         if (target) target.focus();
       }
 
@@ -2018,27 +2126,48 @@
       document.addEventListener('webOSRelaunch', handlePhoneAppLaunch, true);
 
       document.addEventListener('keydown', function (event) {
-        if (!mediaPlayerOverlay.hidden) {
-          if (event.key === 'Escape' || event.key === 'Backspace' || event.key === 'Back' || event.key === 'GoBack' || event.keyCode === 461) {
-            closeMediaPlayer();
+        var modal = getActiveModal();
+        var current = document.activeElement;
+        var editingText = current && (current.tagName === 'INPUT' || current.tagName === 'TEXTAREA');
+        var systemBack = event.key === 'Back' || event.key === 'GoBack' || event.keyCode === 461
+          || event.key === 'Backspace' && !editingText;
+        if (modal && (event.key === 'Escape' || systemBack)) {
+          if (modal === mediaPlayerOverlay) closeMediaPlayer();
+          else closeVisibleDialog(true);
+          event.preventDefault();
+          return;
+        }
+        if (modal && event.key === 'Tab') {
+          var modalCandidates = getFocusableElements(modal);
+          if (!modalCandidates.length) {
+            event.preventDefault();
+            return;
+          }
+          var modalIndex = modalCandidates.indexOf(document.activeElement);
+          if (modalIndex < 0) {
+            modalCandidates[event.shiftKey ? modalCandidates.length - 1 : 0].focus();
+            event.preventDefault();
+          } else if (event.shiftKey && modalIndex === 0) {
+            modalCandidates[modalCandidates.length - 1].focus();
+            event.preventDefault();
+          } else if (!event.shiftKey && modalIndex === modalCandidates.length - 1) {
+            modalCandidates[0].focus();
             event.preventDefault();
           }
           return;
         }
-        if (event.key === 'Escape' && activeDialog) {
-          closeVisibleDialog(true);
+        if (!/^Arrow(Up|Down|Left|Right)$/.test(event.key)) return;
+        var candidates = getFocusableElements(modal || document);
+        if (modal && !modal.contains(current)) {
+          if (candidates.length) candidates[0].focus();
+          event.preventDefault();
           return;
         }
-        if (!/^Arrow(Up|Down|Left|Right)$/.test(event.key)) return;
-        var current = document.activeElement;
         if (current && (current.tagName === 'INPUT' || current.tagName === 'TEXTAREA')) return;
         var direction = event.key.slice(5).toLowerCase();
-        var candidates = Array.prototype.slice.call(document.querySelectorAll('button:not([disabled]), input:not([disabled])')).filter(function (node) {
-          return !node.closest('[hidden]') && node.getClientRects().length > 0;
-        });
         if (!candidates.length) return;
         var currentRect = current && current.getBoundingClientRect ? current.getBoundingClientRect() : null;
-        if (!currentRect || !currentRect.width || !currentRect.height) {
+        if (candidates.indexOf(current) === -1 || !currentRect || !currentRect.width || !currentRect.height) {
           candidates[0].focus();
           event.preventDefault();
           return;
@@ -2071,7 +2200,7 @@
       loadVoiceRecognitionLanguage();
       renderSites();
       handlePhoneAppLaunch();
-      addressInput.focus();
+      focusFirst();
     }());
   </script>
 </body>

@@ -1,6 +1,6 @@
 # LG webOS TV App
 
-This directory contains the webOS app source used for the v1.4.12 IPK in the repository's `releases/` directory. The packaged application files are in `app/`.
+This directory contains the webOS app source used for the v1.4.14 IPK in the repository's `releases/` directory. The packaged application files are in `app/`.
 
 ## Build
 
@@ -11,14 +11,14 @@ mkdir -p dist
 ares-package -o dist app
 ```
 
-The package is written to `dist/com.example.hellotv_1.4.12_all.ipk`.
+The package is written to `dist/com.example.hellotv_1.4.14_all.ipk`.
 
 ## Install on a TV
 
 Enable Developer Mode on the TV, configure it with `ares-setup-device`, then install and launch the package. Replace `TV_DEVICE` with the device name configured in the CLI:
 
 ```sh
-ares-install -d TV_DEVICE ../releases/com.example.hellotv_1.4.12_all.ipk
+ares-install -d TV_DEVICE ../releases/com.example.hellotv_1.4.14_all.ipk
 ares-launch -d TV_DEVICE com.example.hellotv
 ```
 

@@ -20,25 +20,28 @@
     body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% -10%, #293a47 0, #10151c 60%); }
     button, input, textarea { font: inherit; }
     button { cursor: pointer; }
-    button:focus, input:focus, textarea:focus { outline: 3px solid var(--focus); outline-offset: 2px; }
-    .page { width: min(100%, 640px); margin: 0 auto; padding: calc(56px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom)); }
-    header { display: flex; align-items: center; margin: 4px 0 14px; }
-    .logo { display: grid; place-items: center; width: 48px; height: 48px; margin-right: 13px; border-radius: 15px; color: #15201e; background: var(--accent); font-weight: 900; font-size: 22px; }
-    h1 { margin: 0; font-size: 22px; }
-    header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-    .card { margin: 10px 0; padding: 16px; border: 1px solid #313d4b; border-radius: 18px; background: rgba(26, 34, 45, .94); box-shadow: 0 12px 28px #0003; }
+    button:focus, input:focus, textarea:focus, summary:focus { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .page { width: min(100%, 640px); margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 16px calc(92px + env(safe-area-inset-bottom)); }
+    header { display: flex; align-items: center; min-height: 42px; margin: 0 0 10px; }
+    .logo { display: grid; place-items: center; width: 36px; height: 36px; margin-right: 10px; border-radius: 11px; color: #15201e; background: var(--accent); font-weight: 900; font-size: 17px; }
+    h1 { margin: 0; font-size: 18px; }
+    .header-copy { min-width: 0; flex: 1; }
+    .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .settings-button { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #3a4655; border-radius: 13px; color: #eaf0f6; background: #1a222d; font-size: 20px; }
+    .card { margin: 10px 0; padding: 14px; border: 1px solid #313d4b; border-radius: 16px; background: rgba(26, 34, 45, .96); box-shadow: 0 8px 20px #0002; }
     .card h2 { margin: 0 0 10px; font-size: 17px; }
     .muted { color: var(--muted); font-size: 13px; line-height: 1.55; }
-    .connection { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-height: 48px; margin: 0 0 8px; padding: 9px 11px; border: 1px solid #313d4b; border-radius: 14px; background: #1a222d; }
+    .connection { position: sticky; top: calc(env(safe-area-inset-top) + 2px); z-index: 15; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-height: 46px; margin: 0 0 10px; padding: 7px 9px; border: 1px solid #313d4b; border-radius: 13px; background: rgba(26, 34, 45, .96); backdrop-filter: blur(12px); }
     .dot { grid-column: 1; grid-row: 1 / span 2; width: 10px; height: 10px; border-radius: 50%; background: #777; box-shadow: 0 0 0 4px #ffffff0d; }
     .dot.online { background: #77dfaf; box-shadow: 0 0 12px #77dfaf66; }
     .connection-copy { grid-column: 2; display: grid; min-width: 0; gap: 2px; }
     #connectionText { color: #e5eaf1; font-size: 13px; line-height: 1.4; }
     #connectionDetail { color: var(--muted); font-size: 11px; line-height: 1.35; }
+    #connectionDetail:empty { display: none; }
     .connection-action { grid-column: 3; grid-row: 1 / span 2; min-width: 82px; min-height: 44px; max-width: 136px; padding: 8px 10px; border: 0; border-radius: 10px; color: #111815; background: var(--accent); font-size: 12px; font-weight: 800; line-height: 1.2; }
     .connection-action:disabled { cursor: wait; opacity: .6; }
     .connection-action[hidden] { display: none; }
-    .connection-settings { margin: 0 0 10px; border: 1px solid #313d4b; border-radius: 14px; background: #1a222d; }
+    .connection-settings { margin: 10px 0; border: 1px solid #313d4b; border-radius: 14px; background: #1a222d; }
     .connection-settings summary { min-height: 46px; padding: 13px 14px; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
     .connection-settings[open] { padding-bottom: 12px; }
     .connection-settings[open] > :not(summary) { margin-right: 13px; margin-left: 13px; }
@@ -48,40 +51,75 @@
     .key-transfer-row input { min-width: 0; min-height: 50px; border: 1px solid #3a4655; border-radius: 11px; padding: 11px 12px; color: #fff; background: #0e1319; font-size: 16px; }
     .key-transfer-row button { min-height: 50px; padding: 10px 12px; border: 1px solid #465360; border-radius: 10px; color: #e7edf4; background: #28313c; }
     .key-transfer-form > .action-button { width: 100%; }
+    .tv-settings-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .address-list { margin: 10px 0; display: grid; gap: 8px; }
     .address-chip { display: block; overflow-wrap: anywhere; padding: 10px 12px; border-radius: 10px; background: #10151c; color: var(--accent); font-size: 14px; }
     .code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
     .code-label { color: var(--muted); font-size: 14px; }
     .code { letter-spacing: .18em; font-size: 26px; font-weight: 800; }
-    .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin: 8px 0 12px; padding: 5px; border: 1px solid #313d4b; border-radius: 15px; background: #171e27; }
-    .tab-button { min-width: 0; min-height: 48px; padding: 8px 3px; border: 0; border-radius: 11px; color: #d7dee8; background: transparent; font-size: 13px; font-weight: 700; }
+    .tabs { position: fixed; left: 50%; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; width: min(100%, 640px); margin: 0; padding: 7px 12px calc(7px + env(safe-area-inset-bottom)); transform: translateX(-50%); border: 1px solid #313d4b; border-bottom: 0; border-radius: 17px 17px 0 0; background: rgba(18, 25, 34, .97); box-shadow: 0 -8px 24px #0005; backdrop-filter: blur(16px); }
+    .tab-button { display: flex; min-width: 0; min-height: 54px; padding: 6px 3px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 12px; color: #b9c3cf; background: transparent; font-size: 11px; font-weight: 700; line-height: 1.2; }
+    .tab-icon { font-size: 18px; line-height: 1; }
     .tab-button[aria-selected="true"] { color: #111815; background: var(--accent); }
     .tab-panel[hidden] { display: none; }
-    .reply { min-height: 64px; white-space: pre-wrap; overflow-wrap: anywhere; color: #eef2f7; font-size: 15px; line-height: 1.55; }
+    .panel-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin: 3px 2px 10px; }
+    .panel-heading h2 { margin: 0; font-size: 19px; }
+    .panel-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .chat-thread { display: grid; gap: 10px; margin: 8px 0 14px; }
+    .chat-empty { margin: 10px 2px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .chat-message { display: flex; align-items: flex-start; gap: 8px; }
+    .chat-message.user { justify-content: flex-end; }
+    .assistant-avatar { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 10px; color: #10221d; background: var(--accent); font-size: 10px; font-weight: 900; }
+    .chat-bubble { max-width: min(88%, 520px); min-width: 0; padding: 9px 11px; border: 1px solid #354250; border-radius: 14px; color: #eef2f7; background: #1a222d; }
+    .chat-message.user .chat-bubble { border-color: #38584f; color: #f2fff9; background: #20352f; }
+    .chat-label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .chat-message.user .chat-label { color: #b6d9cb; }
+    .reply { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; }
+    .composer { position: sticky; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 10; margin-top: 12px; padding: 10px; border-color: #465360; background: rgba(26, 34, 45, .98); box-shadow: 0 8px 28px #0005; }
+    .composer textarea { min-height: 68px; max-height: 190px; padding: 11px 12px; }
+    .compose-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .compose-controls .action-button { min-height: 46px; }
+    .compose-controls .voice { width: auto; min-height: 46px; margin: 0; font-size: 14px; }
+    .composer .status { min-height: 18px; margin-top: 7px; }
     form { margin: 0; }
     textarea { display: block; width: 100%; min-height: 104px; resize: vertical; border: 1px solid #3a4655; border-radius: 14px; padding: 14px; color: #fff; background: #0e1319; font-size: 16px; line-height: 1.45; }
     .actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
     .action-button { min-height: 50px; padding: 12px 14px; border: 0; border-radius: 13px; color: #eaf0f6; background: #303b48; font-weight: 700; }
     .action-button.primary { color: #111815; background: var(--accent); }
     .action-button.voice { width: 100%; min-height: 52px; margin-top: 10px; color: #111815; background: #b6d7ff; font-size: 16px; }
+    .compose-controls .action-button.primary,
+    .compose-controls .action-button.voice { display: flex; width: 100%; height: 48px; min-height: 48px; margin: 0; padding: 8px 10px; align-items: center; justify-content: center; font-size: 14px; line-height: 1.2; }
     .action-button:disabled { cursor: not-allowed; opacity: .45; }
     .status { min-height: 24px; margin: 9px 2px 0; color: var(--accent); font-size: 13px; }
     .small { margin: 12px 3px 0; color: #8793a2; font-size: 12px; line-height: 1.55; }
-    .site-form, .launch-form { display: grid; gap: 12px; margin: 0; }
+    .site-form, .launch-form { display: grid; gap: 10px; margin: 0; }
     .site-form label, .launch-form label { display: block; color: var(--muted); font-size: 13px; }
     .site-form input, .launch-form input { display: block; width: 100%; min-height: 50px; margin-top: 7px; border: 1px solid #3a4655; border-radius: 11px; padding: 11px 12px; color: #fff; background: #0e1319; font-size: 16px; }
     .site-form .action-button { width: 100%; }
     .launch-form .action-button { width: 100%; }
-    .launch-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .launch-actions { display: grid; gap: 8px; }
+    .launch-action-note { margin: -3px 2px 4px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+    .recent-sites { display: grid; gap: 7px; margin: 12px 0; }
+    .recent-sites-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+    .recent-sites-heading h3 { margin: 0; color: #e5eaf1; font-size: 13px; }
+    .recent-site-list { display: flex; gap: 7px; overflow-x: auto; padding: 2px 1px 5px; scrollbar-width: thin; }
+    .recent-site { display: grid; flex: 0 0 auto; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; min-width: 142px; max-width: 220px; overflow: hidden; border: 1px solid #394654; border-radius: 12px; background: #111821; }
+    .recent-site-open { display: grid; min-width: 0; min-height: 50px; padding: 7px 9px; gap: 2px; border: 0; color: #edf2f7; background: transparent; text-align: left; }
+    .recent-site-open strong, .recent-site-open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .recent-site-open strong { font-size: 12px; }
+    .recent-site-open span { color: var(--muted); font-size: 10px; }
+    .recent-site-remove { min-height: 40px; border: 0; color: var(--muted); background: transparent; font-size: 16px; }
+    .recent-empty { color: var(--muted); font-size: 12px; }
+    .site-save-panel { margin-top: 12px; }
     .remote-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .remote-heading h2 { margin: 0; }
     .remote-heading .action-button { min-height: 42px; padding: 8px 13px; white-space: nowrap; }
-    .touchpad { display: flex; min-height: min(44vh, 330px); margin: 14px 0 10px; padding: 20px; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px solid #465360; border-radius: 22px; color: #e5edf4; background: linear-gradient(145deg, #202d39, #131a23); box-shadow: inset 0 1px #ffffff0a, 0 8px 24px #0003; text-align: center; touch-action: none; user-select: none; -webkit-user-select: none; }
+    .touchpad { display: flex; min-height: min(42vh, 300px); margin: 12px 0 9px; padding: 16px; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px solid #465360; border-radius: 20px; color: #e5edf4; background: linear-gradient(145deg, #202d39, #131a23); box-shadow: inset 0 1px #ffffff0a, 0 8px 24px #0003; text-align: center; touch-action: none; user-select: none; -webkit-user-select: none; }
     .touchpad:active { border-color: var(--accent); background: linear-gradient(145deg, #263a42, #17212a); }
     .touchpad-icon { display: grid; width: 54px; height: 54px; margin-bottom: 3px; place-items: center; border: 1px solid #526373; border-radius: 18px; color: var(--accent); font-size: 26px; }
     .touchpad strong { font-size: 17px; }
     .touchpad span:last-child { color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .remote-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .remote-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
     .remote-actions .action-button { min-height: 54px; }
     .keyboard-tools { margin-top: 16px; border: 1px solid #313d4b; border-radius: 14px; background: #151c25; }
     .keyboard-tools summary { min-height: 48px; padding: 14px; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -89,52 +127,72 @@
     .keyboard-tools[open] > :not(summary) { margin-right: 12px; margin-left: 12px; }
     .keyboard-tools label { display: block; color: var(--muted); font-size: 13px; }
     .keyboard-tools textarea { min-height: 92px; margin-top: 9px; }
-    .keyboard-tools .remote-actions { margin-top: 9px; }
+    .keyboard-tools .remote-actions { grid-template-columns: 1fr 1fr; margin-top: 9px; }
+    .site-save-panel { padding: 0; overflow: hidden; }
+    .site-save-panel summary { min-height: 52px; padding: 17px 16px; color: var(--accent); font-size: 15px; font-weight: 700; cursor: pointer; }
+    .site-save-content { padding: 0 16px 16px; }
+    .site-save-panel[open] summary { border-bottom: 1px solid #313d4b; }
+    .site-save-content .muted { margin: 12px 0; }
     #copyButton { flex: 0 0 auto; min-height: 44px; padding: 8px 11px; border: 1px solid #465360; border-radius: 10px; color: #e7edf4; background: #28313c; font-size: 13px; }
-    @media (max-width: 380px) { .page { padding-right: 13px; padding-left: 13px; } .card { padding: 14px; } .launch-actions { grid-template-columns: 1fr; } .code-row { flex-wrap: wrap; } .connection { column-gap: 8px; padding-right: 8px; padding-left: 10px; } .connection-action { min-width: 76px; max-width: 108px; padding-right: 7px; padding-left: 7px; font-size: 11px; } }
+    .settings-dialog { width: min(560px, calc(100% - 28px)); max-height: min(82vh, 760px); overflow: auto; padding: 15px; border: 1px solid #465360; border-radius: 20px; color: #f5f7fb; background: #151d27; box-shadow: 0 24px 80px #000a; }
+    .settings-dialog::backdrop { background: #05080dcc; backdrop-filter: blur(3px); }
+    .dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .dialog-heading h2 { margin: 0; font-size: 18px; }
+    .dialog-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .dialog-close { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 1px solid #394654; border-radius: 12px; color: #edf2f7; background: #202a36; font-size: 21px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    @media (max-width: 380px) { .page { padding-right: 13px; padding-left: 13px; } .card { padding: 12px; } .code-row { flex-wrap: wrap; } .connection { column-gap: 8px; padding-right: 8px; padding-left: 9px; } .connection-action { min-width: 76px; max-width: 108px; padding-right: 7px; padding-left: 7px; font-size: 11px; } .tabs { padding-right: 8px; padding-left: 8px; } }
+    @media (max-height: 520px) and (orientation: landscape) { .touchpad { min-height: 190px; } .tabs { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); } .tab-button { min-height: 46px; } }
   </style>
 </head>
 <body>
   <main class="page">
     <header>
       <div class="logo" aria-hidden="true">TV</div>
-      <div>
-        <h1>LG 電視 companion</h1>
-        <p>手機提供區網橋接，直接控制電視 AI、網站與影片</p>
+      <div class="header-copy">
+        <h1>LG 電視 Companion</h1>
+      </div>
+      <div class="header-actions">
+        <button class="settings-button" id="settingsButton" type="button" aria-label="設定與連線資訊" title="設定">⚙</button>
       </div>
     </header>
 
-    <section class="connection" id="connection" aria-live="polite">
-      <span class="dot" id="connectionDot"></span>
-      <div class="connection-copy">
-        <span id="connectionText">正在連接手機橋接服務…</span>
-        <span id="connectionDetail"></span>
+    <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+      <div class="dialog-heading">
+        <div>
+          <h2 id="settingsTitle">設定</h2>
+          <p>電視連線、喚醒與 Gemini</p>
+        </div>
+        <button class="dialog-close" id="closeSettingsButton" type="button" aria-label="關閉設定">×</button>
       </div>
-      <button class="connection-action" id="connectTvButton" type="button" hidden>連線電視</button>
-    </section>
-
-    <details class="connection-settings">
-      <summary>進階排錯資訊</summary>
-      <p class="muted">一般使用不需要操作這些資料。只有自動連線失敗、需要手動排錯時才使用；手機和電視需在同一個 Wi-Fi。</p>
-      <div class="address-list" id="addressList"><span class="address-chip">正在讀取本機網路位址…</span></div>
-      <div class="code-row">
-        <span class="code-label">本次連線碼</span>
-        <strong class="code" id="pairCode">------</strong>
-        <button id="copyButton" type="button">複製連線位址</button>
-      </div>
-      <p class="status" id="copyStatus" role="status"></p>
-    </details>
-
-    <nav class="tabs" role="tablist" aria-label="電視控制功能">
-      <button class="tab-button" type="button" role="tab" id="tabAi" aria-controls="panelAi" aria-selected="true" data-panel="panelAi">AI 對話</button>
-      <button class="tab-button" type="button" role="tab" id="tabWeb" aria-controls="panelWeb" aria-selected="false" data-panel="panelWeb">開啟網址</button>
-      <button class="tab-button" type="button" role="tab" id="tabSites" aria-controls="panelSites" aria-selected="false" data-panel="panelSites">網站收藏</button>
-      <button class="tab-button" type="button" role="tab" id="tabRemote" aria-controls="panelRemote" aria-selected="false" data-panel="panelRemote">遙控器</button>
-    </nav>
-
-    <section class="tab-panel" id="panelAi" role="tabpanel" aria-labelledby="tabAi">
+      <details class="connection-settings" open>
+        <summary>電視連線</summary>
+        <p class="muted">優先掃描電視 App 的 QR code；同一個 Wi-Fi 下會自動連線。IP 只在 QR 無法使用時手動填寫。</p>
+        <form class="key-transfer-form" id="tvHostForm">
+          <label for="tvHostInput">電視 IP 或主機名稱
+            <span class="key-transfer-row">
+              <input id="tvHostInput" type="text" maxlength="253" inputmode="url" autocapitalize="off" autocomplete="off" placeholder="例如 192.168.0.32">
+              <button type="submit" id="saveTvHostButton">儲存</button>
+            </span>
+          </label>
+        </form>
+        <div class="tv-settings-actions">
+          <button class="action-button" id="scanTvSettingsButton" type="button">掃描電視 QR</button>
+          <button class="action-button" id="wakeTvButton" type="button">Wi-Fi 喚醒電視</button>
+        </div>
+        <p class="muted">Wi-Fi 喚醒需要電視已接電源，並開啟「一般 → Mobile TV On → Turn on via Wi-Fi」。</p>
+        <form class="key-transfer-form" id="tvMacForm">
+          <label for="tvMacInput">Wi-Fi 喚醒 MAC（QR 未提供時才需填）
+            <span class="key-transfer-row">
+              <input id="tvMacInput" type="text" maxlength="17" autocapitalize="characters" autocomplete="off" placeholder="AA:BB:CC:DD:EE:FF">
+              <button type="submit" id="saveTvMacButton">儲存</button>
+            </span>
+          </label>
+        </form>
+        <p class="status" id="tvSettingsStatus" role="status"></p>
+      </details>
       <details class="connection-settings">
-        <summary>從手機設定 Gemini 金鑰</summary>
+        <summary>Gemini 金鑰</summary>
         <p class="muted">金鑰會傳到電視並保存在電視 App，手機不保存；傳送會取代電視目前的金鑰。傳輸未加密，請只在信任的 Wi‑Fi 使用。</p>
         <form class="key-transfer-form" id="geminiKeyTransferForm">
           <label for="geminiKeyTransferInput">Gemini API 金鑰
@@ -147,54 +205,101 @@
         </form>
         <p class="status" id="geminiKeyTransferStatus" role="status">等待電視 App 連線…</p>
       </details>
-      <section class="card" aria-labelledby="replyTitle">
-        <h2 id="replyTitle">電視上的 AI 回應</h2>
-        <div class="reply" id="replyText">AI 回應會同步顯示在這裡和電視畫面。</div>
-      </section>
-      <form class="card" id="sendForm">
-        <h2>傳訊息給電視</h2>
-        <label class="muted" for="messageInput">輸入要告訴 AI 的內容</label>
-        <textarea id="messageInput" maxlength="2000" placeholder="例如：幫我開啟 3sssi.com"></textarea>
-        <div class="actions">
-          <button class="action-button primary" id="sendButton" type="submit" disabled>送到電視</button>
+      <details class="connection-settings">
+        <summary>進階連線資訊與排錯</summary>
+        <p class="muted">一般使用不需要操作這些資料。只有自動連線失敗、需要手動排錯時才使用；手機和電視需在同一個 Wi‑Fi。</p>
+        <div class="address-list" id="addressList"><span class="address-chip">正在讀取本機網路位址…</span></div>
+        <div class="code-row">
+          <span class="code-label">本次連線碼</span>
+          <strong class="code" id="pairCode">------</strong>
+          <button id="copyButton" type="button">複製連線位址</button>
         </div>
-        <button class="action-button voice" id="voiceButton" type="button" disabled>開始直接語音</button>
+        <p class="status" id="copyStatus" role="status"></p>
+      </details>
+    </dialog>
+
+    <section class="connection" id="connection" aria-live="polite">
+      <span class="dot" id="connectionDot"></span>
+      <div class="connection-copy">
+        <span id="connectionText">正在連線…</span>
+        <span id="connectionDetail"></span>
+      </div>
+      <button class="connection-action" id="connectTvButton" type="button" hidden>連線電視</button>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="電視控制功能">
+      <button class="tab-button" type="button" role="tab" id="tabAi" aria-controls="panelAi" aria-selected="true" data-panel="panelAi"><span class="tab-icon" aria-hidden="true">✦</span><span>AI 對話</span></button>
+      <button class="tab-button" type="button" role="tab" id="tabWeb" aria-controls="panelWeb" aria-selected="false" data-panel="panelWeb"><span class="tab-icon" aria-hidden="true">↗</span><span>網站／影片</span></button>
+      <button class="tab-button" type="button" role="tab" id="tabRemote" aria-controls="panelRemote" aria-selected="false" data-panel="panelRemote"><span class="tab-icon" aria-hidden="true">⌖</span><span>遙控器</span></button>
+    </nav>
+
+    <section class="tab-panel" id="panelAi" role="tabpanel" aria-labelledby="tabAi">
+      <div class="panel-heading">
+        <div>
+          <h2>AI 對話</h2>
+          <p>手機說或打，電視上的 Gemini 會回覆</p>
+        </div>
+      </div>
+      <section class="chat-thread" id="chatThread" role="log" aria-label="AI 對話紀錄" aria-live="polite" aria-relevant="additions">
+        <p class="chat-empty" id="chatEmpty">傳送訊息或開始語音後，對話會顯示在這裡。</p>
+      </section>
+      <form class="card composer" id="sendForm">
+        <label class="sr-only" for="messageInput">要傳給電視 AI 的內容</label>
+        <textarea id="messageInput" maxlength="2000" rows="2" placeholder="例如：幫我開啟 Yahoo"></textarea>
+        <div class="compose-controls">
+          <button class="action-button primary" id="sendButton" type="submit" disabled>傳送訊息</button>
+          <button class="action-button voice" id="voiceButton" type="button" disabled>🎙 語音對話</button>
+        </div>
         <p class="status" id="statusText" role="status">等待連線…</p>
-        <p class="small">語音會直接經 Wi-Fi 傳到電視，再由電視送給 Gemini Live。</p>
       </form>
     </section>
 
     <section class="tab-panel" id="panelWeb" role="tabpanel" aria-labelledby="tabWeb" hidden>
-      <section class="card" aria-labelledby="launchTitle">
-        <h2 id="launchTitle">在電視開啟網頁或影片</h2>
-        <p class="muted">一般網頁會在電視開啟；影片解析會嘗試尋找頁面公開的 MP4／HLS 來源。</p>
+      <div class="panel-heading">
+        <div>
+          <h2 id="launchTitle">網站／影片</h2>
+          <p>選一個常用網址，或貼上新的網址</p>
+        </div>
+      </div>
+      <section class="card" aria-label="開啟網站或尋找影片">
+        <section class="recent-sites" aria-labelledby="recentSitesTitle">
+          <div class="recent-sites-heading"><h3 id="recentSitesTitle">最近使用</h3></div>
+          <div class="recent-site-list" id="recentSiteList"></div>
+        </section>
         <form class="launch-form" id="launchForm">
-          <label for="launchUrlInput">網頁或影片網址
-            <input id="launchUrlInput" type="text" maxlength="2048" inputmode="url" autocapitalize="off" autocomplete="url" placeholder="貼上網址，例如 gimyai.tw/play/…">
+          <label for="launchUrlInput">網址
+            <input id="launchUrlInput" type="text" maxlength="2048" inputmode="url" autocapitalize="off" autocomplete="url" placeholder="貼上網址，例如 https://example.com">
           </label>
+          <p class="launch-action-note">可貼上完整網址；留空並開啟會啟動電視 App。</p>
           <div class="launch-actions">
-            <button class="action-button primary" id="launchAppButton" type="submit" disabled>在電視開啟</button>
-            <button class="action-button" id="playMediaButton" type="button" disabled>解析並播放</button>
+            <button class="action-button primary" id="launchAppButton" type="submit" disabled>在電視開啟網站</button>
+            <p class="launch-action-note">在電視瀏覽器開啟完整網頁。</p>
+            <button class="action-button" id="playMediaButton" type="button" disabled>手機開網頁找影片</button>
+            <p class="launch-action-note">在 App 內播放影片網頁，偵測串流後選擇投放。</p>
           </div>
         </form>
-        <p class="status" id="launchAppStatus" role="status">需要登入、動態播放器或 DRM 的頁面可能無法解析。</p>
+        <details class="connection-settings">
+          <summary>快速解析公開影片來源</summary>
+          <p class="muted">嘗試直接讀取網頁公開宣告的 MP4 或 HLS 連結，找到後立即交給電視。需要登入或 DRM 的頁面可能無法使用。</p>
+          <button class="action-button" id="quickResolveButton" type="button" disabled>直接解析並投放</button>
+        </details>
+        <p class="status" id="launchAppStatus" role="status"></p>
       </section>
-    </section>
-
-    <section class="tab-panel" id="panelSites" role="tabpanel" aria-labelledby="tabSites" hidden>
-      <section class="card" aria-labelledby="addSiteTitle">
-        <h2 id="addSiteTitle">新增電視網站</h2>
-        <p class="muted">網站會加入電視 App 的收藏清單。</p>
-        <form class="site-form" id="addSiteForm">
-          <label for="siteNameInput">網站名稱
-            <input id="siteNameInput" type="text" maxlength="40" autocomplete="off" required placeholder="例如：我的新聞">
-          </label>
-          <label for="siteUrlInput">網站網址
-            <input id="siteUrlInput" type="text" maxlength="500" inputmode="url" autocapitalize="off" autocomplete="url" required placeholder="https://example.com">
-          </label>
-          <button class="action-button primary" id="addSiteButton" type="submit" disabled>新增到電視</button>
-        </form>
-        <p class="status" id="siteStatus" role="status">等待電視 App 連線…</p>
+      <details class="card site-save-panel">
+        <summary id="addSiteTitle">＋ 新增網站到電視收藏</summary>
+        <div class="site-save-content">
+          <p class="muted">儲存後會出現在電視 App 的網站收藏，也會加入這支手機的最近使用捷徑。</p>
+          <form class="site-form" id="addSiteForm">
+            <label for="siteNameInput">網站名稱
+              <input id="siteNameInput" type="text" maxlength="40" autocomplete="off" required placeholder="例如：我的新聞">
+            </label>
+            <label for="siteUrlInput">網站網址
+              <input id="siteUrlInput" type="text" maxlength="500" inputmode="url" autocapitalize="off" autocomplete="url" required placeholder="https://example.com">
+            </label>
+            <button class="action-button primary" id="addSiteButton" type="submit" disabled>新增到電視</button>
+          </form>
+          <p class="status" id="siteStatus" role="status">等待電視 App 連線…</p>
+        </div>
       </section>
     </section>
 
@@ -202,22 +307,22 @@
       <section class="card" aria-labelledby="remoteTitle">
         <div class="remote-heading">
           <h2 id="remoteTitle">觸控板</h2>
-          <button class="action-button primary" id="pointerConnectButton" type="button" disabled>連線觸控板</button>
+          <button class="action-button" id="pointerConnectButton" type="button" disabled>連線觸控板</button>
         </div>
-        <p class="muted">在觸控區滑動來移動電視游標；單指點一下確認，雙指滑動捲動畫面。</p>
         <div class="touchpad" id="touchpad" role="button" tabindex="0" aria-label="電視觸控板，滑動移動游標，點一下確認">
           <span class="touchpad-icon" aria-hidden="true">⌖</span>
-          <strong>在這裡滑動</strong>
-          <span>單指移動・點一下確認・雙指捲動</span>
+          <strong>觸控移動游標</strong>
+          <span>滑動移動・點一下選取・雙指捲動</span>
         </div>
         <div class="remote-actions">
           <button class="action-button" type="button" data-pointer-button="BACK" disabled>返回</button>
           <button class="action-button" type="button" data-pointer-button="HOME" disabled>首頁</button>
+          <button class="action-button" id="pointerSelectButton" type="button" disabled>選取</button>
         </div>
-        <p class="status" id="pointerStatus" role="status">先連線觸控板；第一次使用可能要在電視允許滑鼠、鍵盤和文字輸入控制。</p>
+        <p class="status" id="pointerStatus" role="status">第一次使用時，請在電視允許手機控制。</p>
         <details class="keyboard-tools">
-          <summary>手機鍵盤輸入</summary>
-          <p class="muted">先在電視上點選搜尋框或網址欄，再於手機輸入；文字會插入目前游標位置。</p>
+          <summary>手機打字到電視</summary>
+          <p class="muted">先用觸控板選取電視上的文字欄位，再於手機輸入。</p>
           <label class="muted" for="remoteTextInput">要輸入到電視的文字</label>
           <textarea id="remoteTextInput" maxlength="1000" rows="3" autocomplete="off" placeholder="在這裡輸入文字"></textarea>
           <div class="remote-actions">
@@ -244,6 +349,7 @@
       var pendingSiteAdds = {};
       var pendingGeminiKeyTransfers = {};
       var pendingNativeLaunches = {};
+      var pendingNativeSettings = {};
       var launchInProgress = false;
       var audioContext = null;
       var audioStream = null;
@@ -258,6 +364,10 @@
       var audioHandshakeTimer = null;
       var pointerConnected = false;
       var pointerConnecting = false;
+      var pointerWanted = false;
+      var pointerWasConnected = false;
+      var pointerReconnectAttempts = 0;
+      var pointerReconnectTimer = null;
       var pointerTouchStart = null;
       var pointerLastPoint = null;
       var pointerTouchMoved = false;
@@ -271,7 +381,7 @@
       var connectionText = document.getElementById('connectionText');
       var connectionDetail = document.getElementById('connectionDetail');
       var connectTvButton = document.getElementById('connectTvButton');
-      var replyText = document.getElementById('replyText');
+      var chatThread = document.getElementById('chatThread');
       var messageInput = document.getElementById('messageInput');
       var sendButton = document.getElementById('sendButton');
       var geminiKeyTransferForm = document.getElementById('geminiKeyTransferForm');
@@ -287,11 +397,21 @@
       var launchUrlInput = document.getElementById('launchUrlInput');
       var launchAppButton = document.getElementById('launchAppButton');
       var playMediaButton = document.getElementById('playMediaButton');
+      var quickResolveButton = document.getElementById('quickResolveButton');
       var launchAppStatus = document.getElementById('launchAppStatus');
       var voiceButton = document.getElementById('voiceButton');
       var copyStatus = document.getElementById('copyStatus');
       var statusText = document.getElementById('statusText');
+      var recentSiteList = document.getElementById('recentSiteList');
+      var recentSites = [];
+      var settingsDialog = document.getElementById('settingsDialog');
+      var tvHostForm = document.getElementById('tvHostForm');
+      var tvHostInput = document.getElementById('tvHostInput');
+      var tvMacForm = document.getElementById('tvMacForm');
+      var tvMacInput = document.getElementById('tvMacInput');
+      var tvSettingsStatus = document.getElementById('tvSettingsStatus');
       var pointerConnectButton = document.getElementById('pointerConnectButton');
+      var pointerSelectButton = document.getElementById('pointerSelectButton');
       var pointerStatus = document.getElementById('pointerStatus');
       var touchpad = document.getElementById('touchpad');
       var remoteTextInput = document.getElementById('remoteTextInput');
@@ -306,12 +426,12 @@
         var connected = phoneOnline && tvOnline;
         connectionDot.classList.toggle('online', connected);
         var needsPairing = !!(config && !config.tvConfigured);
-        connectionText.textContent = !phoneOnline ? '正在連接手機橋接服務…' : tvOnline ? '電視 App 已連線' : needsPairing ? '手機已就緒，先連接電視' : '手機已就緒，電視尚未連線';
-        if (tvOnline) connectionFeedback = '連線完成，現在可以開始使用。';
+        connectionText.textContent = !phoneOnline ? '正在連線…' : tvOnline ? '電視已連線' : needsPairing ? '準備配對電視' : '尚未連上電視';
+        if (tvOnline) connectionFeedback = '';
         else if (!phoneOnline) connectionFeedback = '';
         connectionDetail.textContent = connectionFeedback || (phoneOnline && needsPairing
           ? '第一次使用：掃描電視 App 顯示的 QR code。'
-          : phoneOnline ? '按右側按鈕即可啟動電視 App 並連線。' : '');
+          : phoneOnline ? '手機和電視需連上同一個 Wi-Fi。' : '');
         connectTvButton.hidden = !phoneOnline || tvOnline;
         connectTvButton.disabled = !phoneOnline || launchInProgress;
         connectTvButton.textContent = launchInProgress ? '正在連線…' : needsPairing ? '掃描電視 QR' : '連線電視';
@@ -319,13 +439,15 @@
         sendGeminiKeyButton.disabled = !connected || !geminiKeyTransferInput.value.trim() || Object.keys(pendingGeminiKeyTransfers).length > 0;
         if (!geminiKeyTransferFeedback) geminiKeyTransferStatus.textContent = connected
           ? '只有按「儲存到電視」才會傳送金鑰。'
-          : phoneOnline ? '先連線電視，再傳送金鑰。' : '等待手機橋接服務…';
+          : phoneOnline ? '先連線電視，再傳送金鑰。' : '等待手機服務…';
         addSiteButton.disabled = !connected || Object.keys(pendingSiteAdds).length > 0;
         launchAppButton.disabled = !phoneOnline || launchInProgress;
-        playMediaButton.disabled = !phoneOnline || launchInProgress;
+        playMediaButton.disabled = !launchUrlInput.value.trim() || launchInProgress;
+        quickResolveButton.disabled = !phoneOnline || !launchUrlInput.value.trim() || launchInProgress;
         voiceButton.disabled = !connected || !audioSupported || (audioState !== 'idle' && audioState !== 'recording');
         pointerConnectButton.disabled = !config || !config.tvConfigured || pointerConnecting || pointerConnected;
-        pointerConnectButton.textContent = pointerConnected ? '已連線' : pointerConnecting ? '連線中…' : '連線觸控板';
+        pointerConnectButton.textContent = pointerConnected ? '已連線' : pointerConnecting ? '連線中…' : pointerWasConnected ? '重新連線' : '連線觸控板';
+        pointerSelectButton.disabled = !pointerConnected;
         Array.prototype.forEach.call(document.querySelectorAll('[data-pointer-button]'), function (button) {
           button.disabled = !pointerConnected;
         });
@@ -335,7 +457,7 @@
         else if (audioState === 'waiting_reply') voiceButton.textContent = 'Gemini 回覆中…';
         else if (audioState === 'waiting_for_tv' || audioState === 'requesting') voiceButton.textContent = '正在連線…';
         else if (!audioSupported) voiceButton.textContent = '此瀏覽器不支援直接語音';
-        else if (!phoneOnline) voiceButton.textContent = '等待手機橋接服務';
+        else if (!phoneOnline) voiceButton.textContent = '等待手機服務';
         else if (!tvOnline) voiceButton.textContent = '先連線電視即可使用語音';
         else voiceButton.textContent = '🎙 開始直接語音';
       }
@@ -391,7 +513,7 @@
 
       function launchTvApp() {
         if (!phoneOnline || !config || !config.pairCode || launchInProgress) {
-          launchAppStatus.textContent = '手機橋接服務尚未連線，請稍候或重新開啟控制頁。';
+          launchAppStatus.textContent = '手機服務尚未連線，請稍候再試。';
           return;
         }
         var rawUrl = launchUrlInput.value.trim();
@@ -408,9 +530,10 @@
 
         launchInProgress = true;
         updateConnection();
-        launchAppStatus.textContent = '正在連接電視並啟動 App…';
+        launchAppStatus.textContent = payload.url ? '正在電視開啟網站…' : '正在啟動電視 App…';
         nativeLaunch(payload).then(function (message) {
-          launchAppStatus.textContent = message || '已要求電視啟動 App。';
+          launchAppStatus.textContent = message || (payload.url ? '已在電視開啟網站。' : '已要求電視啟動 App。');
+          if (payload.url) rememberRecentSite(payload.url);
         }).catch(function (error) {
           launchAppStatus.textContent = error && error.message ? error.message : '啟動失敗；請確認電視已開機並允許手機控制。';
         }).then(function () {
@@ -419,52 +542,54 @@
         });
       }
 
-      function connectTvApp() {
-        if (!phoneOnline || tvOnline || launchInProgress) return;
-        launchInProgress = true;
-        connectionFeedback = config && !config.tvConfigured ? '正在開啟 QR 掃描器…' : '正在啟動電視 App…';
-        updateConnection();
-        if (config && !config.tvConfigured) {
-          connectionFeedback = '請把電視停在「手機控制連線」QR code 畫面，接著用手機掃描。';
-          connectionDetail.textContent = connectionFeedback;
-          setStatus('請把電視停在「手機控制連線」QR code 畫面，接著用手機掃描。');
-          if (!window.AndroidBridge || typeof window.AndroidBridge.scanAndConnectTv !== 'function') {
-            launchInProgress = false;
-            connectionFeedback = '請回 Companion 首頁按「掃描 QR 並連線」。';
-            updateConnection();
-            setStatus(connectionFeedback);
-            return;
-          }
-          var scanId = makeId();
-          pendingNativeLaunches[scanId] = {
-            resolve: function (message) {
-              launchInProgress = false;
-              if (config) config.tvConfigured = true;
-              connectionFeedback = message || '已啟動電視 App，正在等待連線…';
-              updateConnection();
-              setStatus(connectionFeedback);
-            },
-            reject: function (error) {
-              launchInProgress = false;
-              connectionFeedback = error && error.message ? error.message : '掃描或連線失敗，請重試。';
-              updateConnection();
-              setStatus(connectionFeedback);
-            }
-          };
-          try { window.AndroidBridge.scanAndConnectTv(scanId); }
-          catch (error) {
-            delete pendingNativeLaunches[scanId];
-            launchInProgress = false;
-            connectionFeedback = error && error.message ? error.message : '無法開啟 QR 掃描器。';
-            updateConnection();
-            setStatus(connectionFeedback);
-          }
+      function requestNativeTvScan(statusTarget) {
+        var target = statusTarget || statusText;
+        if (!window.AndroidBridge || typeof window.AndroidBridge.scanAndConnectTv !== 'function') {
+          target.textContent = '無法呼叫相機；請確認 Companion App 的相機權限。';
           return;
         }
+        if (launchInProgress) return;
+        launchInProgress = true;
+        connectionFeedback = '請把電視停在「手機控制連線」QR code 畫面，接著用手機掃描。';
+        target.textContent = connectionFeedback;
+        updateConnection();
+        var scanId = makeId();
+        pendingNativeLaunches[scanId] = {
+          resolve: function (message) {
+            launchInProgress = false;
+            refreshNativeConfig();
+            connectionFeedback = message || '已讀取電視 QR，正在連線…';
+            target.textContent = connectionFeedback;
+            updateConnection();
+          },
+          reject: function (error) {
+            launchInProgress = false;
+            connectionFeedback = error && error.message ? error.message : '掃描或連線失敗，請重試。';
+            target.textContent = connectionFeedback;
+            updateConnection();
+          }
+        };
+        try { window.AndroidBridge.scanAndConnectTv(scanId); }
+        catch (error) {
+          delete pendingNativeLaunches[scanId];
+          launchInProgress = false;
+          connectionFeedback = error && error.message ? error.message : '無法開啟 QR 掃描器。';
+          target.textContent = connectionFeedback;
+          updateConnection();
+        }
+      }
 
-        setStatus('正在啟動電視 App 並連線…');
+      function connectTvApp() {
+        if (!phoneOnline || tvOnline || launchInProgress) return;
+        if (config && !config.tvConfigured) {
+          requestNativeTvScan(statusText);
+          return;
+        }
+        launchInProgress = true;
+        updateConnection();
+        setStatus('正在連線電視…');
         nativeLaunch({}).then(function (message) {
-          connectionFeedback = (message || '已要求電視啟動 App。') + ' 等待電視連線…';
+          connectionFeedback = (message || '已要求連線電視。') + ' 等待電視回應…';
           setStatus(connectionFeedback);
         }).catch(function (error) {
           connectionFeedback = error && error.message ? error.message : '連線電視失敗，請確認電視已開機並允許手機控制。';
@@ -475,9 +600,76 @@
         });
       }
 
+      function openMediaScanner() {
+        var pageUrl = normalizeMediaPageUrl(launchUrlInput.value);
+        if (!pageUrl) {
+          launchAppStatus.textContent = '請輸入有效的 http 或 https 網址。';
+          launchUrlInput.focus();
+          return;
+        }
+        if (!window.AndroidBridge || typeof window.AndroidBridge.openMediaScanner !== 'function') {
+          launchAppStatus.textContent = '手機影片瀏覽器尚未準備好，請重新開啟 App。';
+          return;
+        }
+        if (launchInProgress) return;
+        launchInProgress = true;
+        updateConnection();
+        launchAppStatus.textContent = '正在手機開啟影片網頁…';
+        var id = makeId();
+        pendingNativeLaunches[id] = {
+          resolve: function (message) {
+            launchInProgress = false;
+            launchAppStatus.textContent = message || '已開啟影片來源偵測。';
+            rememberRecentSite(pageUrl);
+            updateConnection();
+          },
+          reject: function (error) {
+            launchInProgress = false;
+            launchAppStatus.textContent = error && error.message ? error.message : '無法開啟影片來源偵測。';
+            updateConnection();
+          }
+        };
+        try { window.AndroidBridge.openMediaScanner(pageUrl, id); }
+        catch (error) {
+          delete pendingNativeLaunches[id];
+          launchInProgress = false;
+          launchAppStatus.textContent = error && error.message ? error.message : '無法開啟影片來源偵測。';
+          updateConnection();
+        }
+      }
+
+      function saveTvHost() {
+        saveNativeSetting('saveTvHost', tvHostInput.value.trim(), tvSettingsStatus);
+      }
+
+      function saveTvMac() {
+        saveNativeSetting('saveTvMac', tvMacInput.value.trim(), tvSettingsStatus);
+      }
+
+      function wakeTv() {
+        saveNativeSetting('wakeTv', '', tvSettingsStatus);
+      }
+
+      function saveNativeSetting(method, value, target) {
+        if (!window.AndroidBridge || typeof window.AndroidBridge[method] !== 'function') {
+          target.textContent = '請重新開啟 Companion App 後重試。';
+          return;
+        }
+        var id = makeId();
+        pendingNativeSettings[id] = target;
+        try {
+          if (method === 'wakeTv') window.AndroidBridge[method](id);
+          else window.AndroidBridge[method](value, id);
+          target.textContent = method === 'wakeTv' ? '正在送出喚醒訊號…' : '正在儲存…';
+        } catch (error) {
+          delete pendingNativeSettings[id];
+          target.textContent = error && error.message ? error.message : '操作失敗，請重試。';
+        }
+      }
+
       function resolveAndPlayMedia() {
         if (!phoneOnline || !config || !config.pairCode || launchInProgress) {
-          launchAppStatus.textContent = '手機橋接服務尚未連線，請稍候或重新開啟控制頁。';
+          launchAppStatus.textContent = '手機服務尚未連線，請稍候再試。';
           return;
         }
         var mediaPageUrl = normalizeMediaPageUrl(launchUrlInput.value);
@@ -609,9 +801,25 @@
         }
       });
 
-      document.getElementById('pointerConnectButton').addEventListener('click', function () {
+      function isRemotePanelActive() {
+        return !document.getElementById('panelRemote').hidden;
+      }
+
+      function clearPointerReconnect() {
+        if (pointerReconnectTimer !== null) {
+          window.clearTimeout(pointerReconnectTimer);
+          pointerReconnectTimer = null;
+        }
+      }
+
+      function connectPointer() {
+        pointerWanted = true;
+        if (!isRemotePanelActive() || document.hidden || pointerConnected || pointerConnecting) return;
+        clearPointerReconnect();
         if (!window.AndroidBridge || typeof window.AndroidBridge.connectPointer !== 'function') {
+          pointerConnecting = false;
           pointerStatus.textContent = '請從 LG 電視 companion App 開啟控制頁。';
+          updateConnection();
           return;
         }
         pointerConnecting = true;
@@ -624,7 +832,61 @@
           pointerStatus.textContent = '觸控板連線呼叫失敗：' + detail;
           updateConnection();
         }
+      }
+
+      function schedulePointerReconnect() {
+        if (!pointerWanted || !pointerWasConnected || !isRemotePanelActive() || document.hidden
+            || pointerReconnectTimer !== null || pointerConnecting || pointerConnected) return;
+        var delay = Math.min(1000 * Math.pow(2, pointerReconnectAttempts), 10000);
+        pointerReconnectAttempts += 1;
+        pointerStatus.textContent = '觸控板中斷，' + Math.ceil(delay / 1000) + ' 秒後自動重連…';
+        updateConnection();
+        pointerReconnectTimer = window.setTimeout(function () {
+          pointerReconnectTimer = null;
+          connectPointer();
+        }, delay);
+      }
+
+      function disconnectPointer(permanent, message) {
+        if (permanent) {
+          pointerWanted = false;
+          pointerWasConnected = false;
+          pointerReconnectAttempts = 0;
+        }
+        clearPointerReconnect();
+        pointerConnected = false;
+        pointerConnecting = false;
+        if (window.AndroidBridge && typeof window.AndroidBridge.disconnectPointer === 'function') {
+          try { window.AndroidBridge.disconnectPointer(); } catch (error) {}
+        }
+        if (message) pointerStatus.textContent = message;
+        updateConnection();
+      }
+
+      document.getElementById('pointerConnectButton').addEventListener('click', function () {
+        pointerReconnectAttempts = 0;
+        connectPointer();
       });
+
+      document.getElementById('pointerSelectButton').addEventListener('click', function () {
+        callPointer('pointerClick', []);
+      });
+
+      var settingsButton = document.getElementById('settingsButton');
+      function closeSettings() {
+        if (typeof settingsDialog.close === 'function' && settingsDialog.open) settingsDialog.close();
+        else settingsDialog.removeAttribute('open');
+      }
+      settingsButton.addEventListener('click', function () {
+        refreshNativeConfig();
+        if (typeof settingsDialog.showModal === 'function') settingsDialog.showModal();
+        else settingsDialog.setAttribute('open', '');
+      });
+      document.getElementById('closeSettingsButton').addEventListener('click', closeSettings);
+      settingsDialog.addEventListener('click', function (event) {
+        if (event.target === settingsDialog) closeSettings();
+      });
+      settingsDialog.addEventListener('close', function () { settingsButton.focus(); });
 
       document.querySelectorAll('[data-pointer-button]').forEach(function (button) {
         button.addEventListener('click', function () { callPointer('pointerButton', [button.getAttribute('data-pointer-button')]); });
@@ -672,10 +934,24 @@
       };
 
       window.onNativePointerStatus = function (connected, message) {
+        var wasConnected = pointerConnected;
         pointerConnected = !!connected;
         pointerConnecting = !pointerConnected && /^(正在|已連上電視|請在電視允許手機)/.test(message || '');
         pointerStatus.textContent = message || (pointerConnected ? '觸控板已連線。' : '觸控板尚未連線。');
+        if (pointerConnected) {
+          pointerWasConnected = true;
+          pointerReconnectAttempts = 0;
+          clearPointerReconnect();
+        } else if ((message || '').indexOf('手機 App 進入背景') === 0) {
+          clearPointerReconnect();
+        } else if (wasConnected || (pointerWanted && pointerWasConnected && !pointerConnecting)) {
+          schedulePointerReconnect();
+        }
         updateConnection();
+      };
+
+      window.onNativeAppForegrounded = function () {
+        if (pointerWanted && isRemotePanelActive()) connectPointer();
       };
 
       function sendText(text) {
@@ -690,13 +966,129 @@
         }
         var id = makeId();
         pendingMessages[id] = clean;
-        socket.send(JSON.stringify({ type: 'send_text', id: id, text: clean }));
+        try {
+          socket.send(JSON.stringify({ type: 'send_text', id: id, text: clean }));
+          appendChatMessage('user', clean);
+        } catch (error) {
+          delete pendingMessages[id];
+          setStatus('訊息沒有送出，請確認連線後重試。');
+          return;
+        }
         setStatus('訊息已送出，等待電視確認…');
+      }
+
+      function appendChatMessage(role, text) {
+        var clean = String(text || '').trim();
+        if (!clean) return;
+        var empty = document.getElementById('chatEmpty');
+        if (empty) empty.remove();
+        var isUser = role === 'user';
+        var row = document.createElement('div');
+        row.className = 'chat-message' + (isUser ? ' user' : ' assistant');
+        if (!isUser) {
+          var avatar = document.createElement('span');
+          avatar.className = 'assistant-avatar';
+          avatar.setAttribute('aria-hidden', 'true');
+          avatar.textContent = 'AI';
+          row.appendChild(avatar);
+        }
+        var bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        var label = document.createElement('span');
+        label.className = 'chat-label';
+        label.textContent = isUser ? '你' : '電視 AI';
+        var body = document.createElement('div');
+        body.className = 'reply';
+        body.textContent = clean;
+        bubble.appendChild(label);
+        bubble.appendChild(body);
+        row.appendChild(bubble);
+        chatThread.appendChild(row);
+        while (chatThread.children.length > 30) chatThread.removeChild(chatThread.firstElementChild);
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
       function normalizeSiteUrl(value) {
         return normalizeHttpUrl(value, 500);
       }
+
+      function readRecentSites() {
+        try {
+          var saved = JSON.parse(window.localStorage.getItem('lgcompanion.phoneRecentSites.v1') || '[]');
+          return Array.isArray(saved) ? saved.filter(function (site) {
+            return site && typeof site.url === 'string' && normalizeSiteUrl(site.url);
+          }).slice(0, 6) : [];
+        } catch (error) { return []; }
+      }
+
+      function renderRecentSites() {
+        recentSiteList.textContent = '';
+        if (!recentSites.length) {
+          var empty = document.createElement('span');
+          empty.className = 'recent-empty';
+          empty.textContent = '開啟過的網站會收在這裡，方便下次快速回去。';
+          recentSiteList.appendChild(empty);
+          return;
+        }
+        recentSites.forEach(function (site) {
+          var item = document.createElement('div');
+          item.className = 'recent-site';
+          var open = document.createElement('button');
+          open.type = 'button';
+          open.className = 'recent-site-open';
+          open.setAttribute('aria-label', '在電視開啟 ' + site.name);
+          var name = document.createElement('strong');
+          name.textContent = site.name;
+          var host = document.createElement('span');
+          try { host.textContent = new URL(site.url).hostname.replace(/^www\./, ''); }
+          catch (error) { host.textContent = site.url; }
+          open.appendChild(name);
+          open.appendChild(host);
+          open.addEventListener('click', function () {
+            launchUrlInput.value = site.url;
+            if (!tvOnline) {
+              launchAppStatus.textContent = '已選取「' + site.name + '」；連線電視後即可開啟。';
+              document.getElementById('connection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+              return;
+            }
+            launchTvApp();
+          });
+          var remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'recent-site-remove';
+          remove.setAttribute('aria-label', '移除 ' + site.name + ' 的手機捷徑');
+          remove.textContent = '×';
+          remove.addEventListener('click', function () {
+            recentSites = recentSites.filter(function (candidate) { return candidate.url !== site.url; });
+            persistRecentSites();
+            renderRecentSites();
+          });
+          item.appendChild(open);
+          item.appendChild(remove);
+          recentSiteList.appendChild(item);
+        });
+      }
+
+      function persistRecentSites() {
+        try { window.localStorage.setItem('lgcompanion.phoneRecentSites.v1', JSON.stringify(recentSites)); }
+        catch (error) {}
+      }
+
+      function rememberRecentSite(rawUrl, label) {
+        var url = normalizeSiteUrl(rawUrl);
+        if (!url) return;
+        var name = String(label || '').trim();
+        if (!name) {
+          try { name = new URL(url).hostname.replace(/^www\./, ''); }
+          catch (error) { name = url; }
+        }
+        recentSites = [{ url: url, name: name }].concat(recentSites.filter(function (site) { return site.url !== url; })).slice(0, 6);
+        persistRecentSites();
+        renderRecentSites();
+      }
+
+      recentSites = readRecentSites();
+      renderRecentSites();
 
       function normalizeMediaPageUrl(value) {
         return normalizeHttpUrl(value, 2048);
@@ -738,6 +1130,7 @@
         pendingSiteAdds[id] = {
           name: cleanName,
           rawUrl: String(rawUrl || '').trim(),
+          url: url,
           timer: window.setTimeout(function () {
             if (!pendingSiteAdds[id]) return;
             delete pendingSiteAdds[id];
@@ -954,9 +1347,15 @@
         if (document.hidden && audioState !== 'idle' && audioState !== 'requesting') {
           stopPhoneAudio(true, '手機控制頁已離開前景，麥克風已停止。');
         }
+        if (document.hidden && pointerWanted) {
+          disconnectPointer(false, '手機 App 進入背景，觸控板已暫停；回到遙控器頁會自動重連。');
+        } else if (!document.hidden && pointerWanted && isRemotePanelActive()) {
+          connectPointer();
+        }
       });
       window.addEventListener('pagehide', function () {
         if (audioState !== 'idle') stopPhoneAudio(true, '手機控制頁已關閉，麥克風已停止。');
+        disconnectPointer(true, '控制頁已關閉，觸控板連線已停止。');
       });
 
       function connectBridge() {
@@ -976,7 +1375,7 @@
         var current;
         try { current = new WebSocket(endpoint); }
         catch (error) {
-          setStatus('無法連接手機 APK 橋接服務；請重新開啟控制頁。');
+          setStatus('無法連上手機服務；請重新開啟控制頁。');
           reconnectTimer = window.setTimeout(connectBridge, 4000);
           return;
         }
@@ -1023,6 +1422,7 @@
                 siteNameInput.value = '';
                 siteUrlInput.value = '';
               }
+              if (packet.accepted) rememberRecentSite(pendingSite.url, pendingSite.name);
               setSiteStatus(packet.message || (packet.accepted ? '網站已加入電視清單。' : '電視沒有接受這個網站。'));
               updateConnection();
               return;
@@ -1034,7 +1434,7 @@
             return;
           }
           if (packet.type === 'assistant_reply') {
-            replyText.textContent = packet.text || '（沒有文字回覆）';
+            appendChatMessage('assistant', packet.text || '（沒有文字回覆）');
             return;
           }
           if (packet.type === 'audio_ready') {
@@ -1061,7 +1461,7 @@
           }
         };
         current.onerror = function () {
-          if (socket === current) setStatus('連線失敗；確認手機橋接服務已啟動。');
+          if (socket === current) setStatus('連線失敗；請確認 Companion App 已開啟。');
         };
         current.onclose = function () {
           if (socket !== current) return;
@@ -1078,6 +1478,9 @@
       function renderPairing(info) {
         config = info;
         pairCode.textContent = info.pairCode || '------';
+        if (tvHostInput && document.activeElement !== tvHostInput) tvHostInput.value = info.tvHost || '';
+        if (tvMacInput && document.activeElement !== tvMacInput) tvMacInput.value = info.tvMac || '';
+        if (info.bridgeStatus) connectionFeedback = info.bridgeStatus;
         addressList.textContent = '';
         var addresses = Array.isArray(info.addresses) ? info.addresses : [];
         if (!addresses.length) {
@@ -1095,34 +1498,72 @@
         }
       }
 
+      function refreshNativeConfig() {
+        if (!window.AndroidBridge || typeof window.AndroidBridge.getConfig !== 'function') return;
+        try {
+          renderPairing(JSON.parse(window.AndroidBridge.getConfig()));
+          updateConnection();
+        } catch (error) {}
+      }
+
+      window.onNativeSettingsResult = function (id, success, message, nativeConfig) {
+        var target = pendingNativeSettings[id] || tvSettingsStatus;
+        delete pendingNativeSettings[id];
+        if (nativeConfig) renderPairing(nativeConfig);
+        target.textContent = message || (success ? '已儲存。' : '操作失敗，請重試。');
+        updateConnection();
+      };
+
+      window.onNativeBridgeStatus = function (message) {
+        if (message) {
+          connectionFeedback = message;
+          if (!phoneOnline) setStatus(message);
+          updateConnection();
+        }
+      };
+
+      window.setSharedMediaUrl = function (url) {
+        var normalized = normalizeMediaPageUrl(url);
+        if (normalized) launchUrlInput.value = normalized;
+        updateConnection();
+      };
+
       function loadPairingInfo() {
         if (window.AndroidBridge && typeof window.AndroidBridge.getConfig === 'function') {
           try {
-            var nativeInfo = JSON.parse(window.AndroidBridge.getConfig());
-            renderPairing(nativeInfo);
+            refreshNativeConfig();
             connectBridge();
             return;
           } catch (error) {
-            addressList.textContent = '無法讀取手機橋接資料。';
+            addressList.textContent = '無法讀取手機連線資料。';
             setStatus('請更新並重新開啟 LG 電視 companion APK。');
             return;
           }
         }
         addressList.textContent = '請在 LG 電視 companion APK 內開啟控制頁。';
-        setStatus('此控制頁需要 APK 內的手機橋接服務。');
+        setStatus('請從 LG 電視 Companion App 開啟這個控制頁。');
       }
 
       var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab-button'));
       tabs.forEach(function (button, index) {
+        button.tabIndex = button.getAttribute('aria-selected') === 'true' ? 0 : -1;
         button.addEventListener('click', function () {
           var selectedPanel = button.getAttribute('data-panel');
+          var wasRemotePanelActive = isRemotePanelActive();
           tabs.forEach(function (tab) {
             tab.setAttribute('aria-selected', tab === button ? 'true' : 'false');
+            tab.tabIndex = tab === button ? 0 : -1;
           });
           Array.prototype.forEach.call(document.querySelectorAll('.tab-panel'), function (panel) {
             panel.hidden = panel.id !== selectedPanel;
           });
           window.scrollTo(0, 0);
+          if (selectedPanel === 'panelRemote' && !wasRemotePanelActive) {
+            pointerReconnectAttempts = 0;
+            connectPointer();
+          } else if (selectedPanel !== 'panelRemote' && wasRemotePanelActive) {
+            disconnectPointer(true, '已離開遙控器頁，觸控板連線已暫停。');
+          }
         });
         button.addEventListener('keydown', function (event) {
           var targetIndex = event.key === 'ArrowRight' ? (index + 1) % tabs.length
@@ -1159,6 +1600,19 @@
         geminiKeyTransferFeedback = '';
         updateConnection();
       });
+      tvHostForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        saveTvHost();
+      });
+      tvMacForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        saveTvMac();
+      });
+      document.getElementById('scanTvSettingsButton').addEventListener('click', function () {
+        requestNativeTvScan(tvSettingsStatus);
+      });
+      document.getElementById('wakeTvButton').addEventListener('click', wakeTv);
+      launchUrlInput.addEventListener('input', updateConnection);
       document.getElementById('toggleGeminiKeyVisibility').addEventListener('click', function () {
         var show = geminiKeyTransferInput.type === 'password';
         geminiKeyTransferInput.type = show ? 'text' : 'password';
@@ -1175,7 +1629,8 @@
         event.preventDefault();
         launchTvApp();
       });
-      playMediaButton.addEventListener('click', resolveAndPlayMedia);
+      playMediaButton.addEventListener('click', openMediaScanner);
+      quickResolveButton.addEventListener('click', resolveAndPlayMedia);
 
       voiceButton.addEventListener('click', function () {
         if (audioState === 'recording') {
