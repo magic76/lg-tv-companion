@@ -1,45 +1,51 @@
 # LG TV Companion
 
-適用於 LG webOS 電視的手機 companion 與電視 App，整合手機遙控、Gemini 對話、網站開啟和支援格式的影片投放。Android 與 webOS 兩端的原始碼和安裝檔都在這個 repo。
+## 中文
 
-## 專案內容
+LG TV Companion 由 Android 手機 companion 和 LG webOS 電視 App 組成，提供手機遙控、Gemini 對話、網站收藏、網址開啟，以及支援格式的影片投放。
+
+### 專案內容
 
 | 目錄 | 用途 |
 | --- | --- |
-| `app/` | Android companion：QR 配對、觸控板、文字輸入、Gemini Live、網站控制與影片串流傳送 |
-| `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、接收手機控制和支援的影片串流 |
+| `app/` | Android companion：QR 配對、觸控板、文字輸入、Gemini Live、網站控制、影片串流傳送與電視 App 安裝 |
+| `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、手機控制及支援的影片串流播放 |
 | `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-目前安裝檔版本分開管理：Android `1.4.29`，webOS TV `1.4.14`。
+目前版本：Android companion `1.4.36`、webOS TV App `1.4.17`。Android APK 已內附 TV App IPK，可從手機安裝到電視。
 
-## 下載
+### 下載
 
-- [Android companion APK v1.4.29](releases/LGTVCompanion-Android-v1.4.29.apk) — debug 簽名，供自行安裝，不是 Play Store 發行版。
-- [LG webOS TV IPK v1.4.14](releases/com.example.hellotv_1.4.14_all.ipk)
+- [Android companion APK v1.4.36](releases/LGTVCompanion-Android-v1.4.36.apk) — 內含 webOS TV v1.4.17 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [LG webOS TV IPK v1.4.17](releases/com.example.hellotv_1.4.17_all.ipk)
 - [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 
-## 初次設定
+### 初次設定
 
-1. 在 LG 電視啟用 Developer Mode，使用 webOS TV CLI 安裝 IPK；安裝範例見 [`webos-tv/README.md`](webos-tv/README.md)。
-2. Android 手機安裝 APK，手機和電視連到同一個 Wi-Fi。
-3. 開啟電視 App 的「手機控制連線」並顯示 QR code；在 Android companion 掃描配對。電視出現控制授權提示時允許。
-4. 在電視 App 設定 Gemini API 金鑰，或在手機控制頁的 AI 對話區傳送到電視。手機和電視不需要另外安裝或啟動 Termux bridge；使用手機控制時，Android companion 必須保持開啟。
+1. 在電視啟用 Developer Mode 與 Key Server，確認工作階段有效，記下電視 IP 和畫面顯示的 passphrase。手機和電視需連上同一個 Wi-Fi。
+2. 在 Android companion 設定電視 IP，展開「安裝電視 App」即可載入 APK 內附的 IPK。若選擇其他 `.ipk`，內附版本仍會保留，也可以隨時切回。
+3. 安裝時輸入電視 Developer Mode 顯示的 passphrase，並確認第一次 SSH 連線顯示的主機指紋。安裝前會再次顯示套件名稱、App ID 和目標電視供確認。
+4. 在電視 App 開啟「手機控制連線」並顯示 QR code，再用 Android companion 掃描。電視出現控制授權提示時允許。
+5. 在電視 App 設定 Gemini API 金鑰，或從手機控制頁傳送到電視。手機與電視配對後，可在手機頁面按「連線電視」啟動電視 App 並連線。
 
-配對後在手機控制頁頂端按「連線電視」，即可從同一個畫面啟動電視 App 並完成連線；首次設定會從這裡直接掃描電視 QR code。
+電視 App 安裝使用 Developer Mode Key Server 取得 SSH 金鑰（連接埠 9991），再透過 SSH（連接埠 9922）傳送及安裝 IPK；這與手機控制頁的 QR 配對是不同連線，不需要先完成手機控制配對。安裝不會自動開啟 App 或切換電視畫面。
 
-## 功能與限制
+### 功能與限制
 
-- 手機可控制電視游標、輸入文字、開啟網址、編輯網站收藏，也能把支援的影片串流交給電視播放。
-- 切到「遙控器」分頁時會自動連線觸控板；離開分頁或手機 App 進入背景時會暫停，回到遙控器分頁自動恢復。已連線後若短暫掉線，會逐步重試。
-- Android companion 可送出 Wi-Fi Wake-on-LAN 喚醒封包。電視需接著電源，並在 `一般 → Mobile TV On → Turn on via Wi-Fi` 開啟允許；新版 TV App 會嘗試在配對 QR code 附上電視 MAC，若系統不提供則可從進階設定手動輸入。此方式使用通用 Magic Packet，能否喚醒仍取決於電視韌體和路由器網路設定；目前尚未在目標電視上實測。
-- Gemini Live 可在電視上對話並開啟收藏網站或使用者提供的完整網址。webOS v1.4.12 暫時停用 Gemini Google Search grounding，用來對照配額問題；手機 companion 可傳送文字或手機麥克風音訊，並可把 Gemini 金鑰送到電視保存。
-- 影片投放適用於網頁能公開取得的 MP4/HLS 等串流。DRM、登入限制、blob URL 或依賴特殊 cookie/header 的影片可能無法播放。這不是手機全螢幕鏡像功能。
-- 手機與電視需要在同一個區域網路。電視型號、webOS 版本和網站播放器可能影響相容性。
-- Gemini 金鑰保存在電視 App 的本機儲存區；它不在 repo 內。從手機傳送金鑰使用未加密的區網 WebSocket，請只在可信任的 Wi-Fi 使用。用戶端金鑰可能被取出，請勿把含有個人金鑰的 App 或裝置資料分享出去。
+- 手機可控制電視游標、輸入文字、開啟網址、管理網站收藏，也可將支援的影片串流交給電視播放。
+- Android companion APK 內附 webOS TV IPK。安裝器會顯示電視回報的安裝進度；若兩分鐘內未取得完成回報，電視端仍可能在背景安裝，請先查看電視 App 清單再重試。
+- 手機控制橋接服務和 Gimyai 相容代理都由 Android companion 提供，不需要另外安裝或啟動 Termux bridge。使用期間 Android 會顯示持續通知；請勿強制停止 companion。
+- Gimyai 相容代理針對舊版 Chromium 的 CSS 排版問題提供備援，也會移除已知第三方廣告載入器與彈出跳轉。其他網站仍直接交由 LG 瀏覽器開啟。
+- 切到「遙控器」分頁時會自動連線觸控板；離開分頁或 companion 進入背景時會暫停，回到遙控器分頁時再連線。短暫斷線後會逐步重試。
+- Android companion 可送出 Wi-Fi Wake-on-LAN 封包。電視需接著電源，並開啟「一般 → Mobile TV On → Turn on via Wi-Fi」。能否喚醒仍取決於電視韌體和路由器設定，目前尚未在目標電視上實測。
+- Gemini Live 可用文字或手機麥克風音訊對話，並開啟收藏網站或使用者提供的完整網址。手機也可將 Gemini API 金鑰傳送到電視保存。webOS TV v1.4.12 暫時停用 Google Search grounding。
+- 影片投放適用於網頁可公開取得的 MP4/HLS 等串流。DRM、登入限制、blob URL，或需要特殊 cookie/header 的影片可能無法播放；這不是手機畫面鏡像。
+- 手機和電視需在同一個區域網路。電視型號、webOS 版本和網站播放器都可能影響相容性。
+- Gemini API 金鑰保存在電視 App 的本機儲存區，不會包含在 repo。手機傳送金鑰使用未加密的區網 WebSocket，請只在可信任的 Wi-Fi 使用，也不要分享含有個人金鑰的裝置資料。
 
-## 從原始碼建置
+### 從原始碼建置
 
-### Android companion
+#### Android companion
 
 需求：JDK 17 以上、Android SDK Platform 36、Gradle 8.13。
 
@@ -49,7 +55,7 @@ gradle assembleDebug
 
 APK 會產生於 `app/build/outputs/apk/debug/app-debug.apk`。
 
-### LG webOS TV App
+#### LG webOS TV App
 
 先安裝 [webOS TV CLI](https://webostv.developer.lge.com/develop/tools/cli-installation)，然後：
 
@@ -59,12 +65,73 @@ mkdir -p dist
 ares-package -o dist app
 ```
 
-IPK 會輸出至 `webos-tv/dist/`。電視端建置、安裝指令和 Developer Mode 說明見 [`webos-tv/README.md`](webos-tv/README.md)。
+IPK 會輸出至 `webos-tv/dist/`。電視端建置與安裝說明見 [`webos-tv/README.md`](webos-tv/README.md)。
 
 ---
 
 ## English
 
-LG TV Companion is a two-part project for LG webOS TVs. The Android app provides QR pairing, touchpad and text input, Gemini Live controls, website management, and supported video stream handoff. The webOS app provides the TV interface and receives phone control over the local network.
+LG TV Companion consists of an Android phone companion and an LG webOS TV app. It provides phone-based TV control, Gemini conversations, website bookmarks, URL launching, and handoff for supported video streams.
 
-Install the webOS IPK and Android APK, connect both devices to the same Wi-Fi, then pair by scanning the QR code shown in the TV app. The Android companion hosts the local bridge, so keep it open while using phone control. Gemini API keys are entered and stored locally on the TV; they are not included in this repository.
+### Project contents
+
+| Directory | Purpose |
+| --- | --- |
+| `app/` | Android companion: QR pairing, touchpad, text input, Gemini Live, website controls, video handoff, and TV app installation |
+| `webos-tv/app/` | LG webOS TV app: website and bookmark management, Gemini conversations, phone control, and supported video playback |
+| `releases/` | Android APKs, webOS IPKs, and SHA-256 checksums |
+
+Current versions: Android companion `1.4.36` and webOS TV app `1.4.17`. The Android APK bundles the TV app IPK so it can be installed from the phone.
+
+### Downloads
+
+- [Android companion APK v1.4.36](releases/LGTVCompanion-Android-v1.4.36.apk) — includes webOS TV app v1.4.17; debug-signed for sideloading and not a Play Store release.
+- [LG webOS TV app IPK v1.4.17](releases/com.example.hellotv_1.4.17_all.ipk)
+- [SHA-256 checksums](releases/SHA256SUMS.txt)
+
+### Getting started
+
+1. Enable Developer Mode and Key Server on the TV. Make sure the Developer Mode session is active, then note the TV IP address and the passphrase displayed on the TV. Connect the phone and TV to the same Wi-Fi network.
+2. Enter the TV IP in Android companion settings and expand **Install TV app** to load the IPK bundled in the APK. Choosing another `.ipk` keeps the bundled version available, and you can switch back at any time.
+3. During installation, enter the passphrase shown in the TV's Developer Mode app and confirm the SSH host fingerprint on the first connection. Review the package name, app ID, and target TV in the confirmation dialog.
+4. Open **Phone control** in the TV app and display its QR code. Scan it with Android companion, then accept the TV's control authorization prompt.
+5. Set the Gemini API key in the TV app, or send it from the phone control page. After pairing, tap **Connect TV** on the phone page to launch and connect to the TV app.
+
+TV app installation uses the Developer Mode Key Server to retrieve the SSH key (port 9991), then transfers and installs the IPK over SSH (port 9922). This is separate from QR pairing for phone control; phone control does not need to be paired first. Installation does not launch the app or switch the TV screen automatically.
+
+### Features and limitations
+
+- Use the phone to move the TV pointer, enter text, open URLs, manage website bookmarks, and send supported video streams to the TV.
+- The Android APK includes the webOS TV app IPK. The installer displays installation progress reported by the TV. If no completion response arrives within two minutes, the TV may still be installing in the background; check the TV's app list before retrying.
+- Android companion provides both the phone-control bridge and the Gimyai compatibility proxy. No separate Termux bridge is required. Android displays an ongoing notification while these services are active; do not force-stop the companion.
+- The Gimyai proxy provides CSS layout fallbacks for older Chromium and removes known third-party ad loaders and popup redirects. Other websites are opened by the LG browser.
+- The touchpad connects when you enter the **Remote** tab, pauses when you leave the tab or the companion goes to the background, and reconnects when you return. It retries gradually after a brief disconnect.
+- Android companion can send a Wi-Fi Wake-on-LAN packet. The TV must remain connected to power, and **General → Mobile TV On → Turn on via Wi-Fi** must be enabled. Wake support depends on the TV firmware and router configuration and has not been verified on the target TV.
+- Gemini Live supports text and phone-microphone audio conversations and can open bookmarked sites or a full URL provided by the user. The phone can also send a Gemini API key to the TV for local storage. Google Search grounding is temporarily disabled in webOS TV v1.4.12.
+- Video handoff works with publicly accessible streams such as MP4 and HLS. DRM, login requirements, blob URLs, or streams requiring special cookies or headers may not work. This is not phone screen mirroring.
+- The phone and TV must be on the same local network. Compatibility may vary with the TV model, webOS version, and website player.
+- Gemini API keys are stored locally by the TV app and are not included in this repository. Sending a key from the phone uses an unencrypted local-network WebSocket; use a trusted Wi-Fi network and do not share device data containing personal keys.
+
+### Build from source
+
+#### Android companion
+
+Requirements: JDK 17 or later, Android SDK Platform 36, and Gradle 8.13.
+
+```sh
+gradle assembleDebug
+```
+
+The APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
+
+#### LG webOS TV app
+
+Install the [webOS TV CLI](https://webostv.developer.lge.com/develop/tools/cli-installation), then run:
+
+```sh
+cd webos-tv
+mkdir -p dist
+ares-package -o dist app
+```
+
+The IPK is written to `webos-tv/dist/`. See [`webos-tv/README.md`](webos-tv/README.md) for TV build and installation instructions.

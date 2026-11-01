@@ -386,7 +386,7 @@
       var liveSocket = null;
       var controllerSocket = null;
       var controllerReconnectTimer = null;
-      var controllerConfig = { url: '', code: '' };
+      var controllerConfig = { url: '', code: '', gimyaiProxyUrl: '' };
       var controllerPhoneOnline = false;
       var phoneAudioPending = false;
       var phoneAudioActive = false;
@@ -496,6 +496,34 @@
         }
       }
 
+      function controllerProxyBase(raw) {
+        try {
+          var parsed = new URL(String(raw || '').trim());
+          if (parsed.protocol !== 'http:' || !parsed.hostname || !parsed.port || parsed.username || parsed.password) return '';
+          if (parsed.pathname !== '/' || parsed.search || parsed.hash) return '';
+          return parsed.origin + '/';
+        } catch (error) {
+          return '';
+        }
+      }
+
+      function gimyaiCompatTarget(targetUrl) {
+        var base = controllerConfig.gimyaiProxyUrl;
+        if (!base) return targetUrl;
+        try {
+          var target = new URL(targetUrl);
+          var host = target.hostname.toLowerCase();
+          if (host !== 'gimyai.tw' && host !== 'www.gimyai.tw') return targetUrl;
+          var proxy = new URL(base);
+          proxy.pathname = target.pathname;
+          proxy.search = target.search;
+          proxy.hash = target.hash;
+          return proxy.href;
+        } catch (error) {
+          return targetUrl;
+        }
+      }
+
       function updateControllerStatus() {
         if (!controllerConfig.url || !controllerConfig.code) {
           setControllerStatus('請在手機 APK 設定電視 IP，然後按「手機控制」。');
@@ -519,7 +547,11 @@
           setControllerStatus('手機 APK 傳來的連線資料無效。請重新從 APK 開啟電視 app。');
           return false;
         }
-        controllerConfig = { url: endpoint, code: code };
+        controllerConfig = {
+          url: endpoint,
+          code: code,
+          gimyaiProxyUrl: controllerProxyBase(params.gimyaiProxyUrl || '')
+        };
         renderControllerConnectionMark();
         connectPhoneController();
         return true;
@@ -1104,23 +1136,35 @@
           showToast('請輸入有效的 http 或 https 網址。');
           return;
         }
-        openInLgBrowser(url);
+        var browserTarget = gimyaiCompatTarget(url);
+        if (browserTarget !== url) showToast('Gimyai Chromium 53 相容模式已套用。');
+        openInLgBrowser(browserTarget);
       }
 
       function openInLgBrowser(targetUrl) {
         if (!targetUrl) return;
+        if (!window.webOS || !webOS.service || typeof webOS.service.request !== 'function') {
+          showToast('找不到 LG 瀏覽器啟動服務；仍留在 App 內。');
+          return;
+        }
         try {
-          if (window.webOSDev && window.webOSDev.APP && window.webOSDev.launch) {
-            window.webOSDev.launch({
-              id: window.webOSDev.APP.BROWSER,
-              params: { target: targetUrl },
-              onSuccess: function () {},
-              onFailure: function () { showToast('LG 瀏覽器無法啟動；仍留在 App 內。'); }
-            });
-            return;
-          }
-        } catch (error) {}
-        showToast('找不到 LG 瀏覽器；仍留在 App 內。');
+          // Launch the system browser directly so webOSDev.launch does not
+          // add fullMode=true. This isolates browser launch mode while keeping
+          // the same native browser and target URL.
+          webOS.service.request('luna://com.webos.applicationManager', {
+            method: 'launch',
+            parameters: {
+              id: 'com.webos.app.browser',
+              params: { target: targetUrl, fullMode: false }
+            },
+            onSuccess: function () {},
+            onFailure: function () {
+              showToast('LG 瀏覽器無法啟動；仍留在 App 內。');
+            }
+          });
+        } catch (error) {
+          showToast('LG 瀏覽器無法啟動；仍留在 App 內。');
+        }
       }
 
       function safeMediaUrl(value) {

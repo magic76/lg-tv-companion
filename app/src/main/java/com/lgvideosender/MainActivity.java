@@ -65,6 +65,8 @@ import java.io.FileReader;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.net.InetAddress;
 import java.net.Inet4Address;
 import java.net.HttpURLConnection;
@@ -103,24 +105,33 @@ public final class MainActivity extends Activity {
     private static final Pattern QUALITY_HINT = Pattern.compile("(?i)(2160p|1440p|1080p|720p|480p|360p|240p|4k|uhd|\\d{3,4}\\s*[x×]\\s*\\d{3,4})");
     private static final Pattern VIDEO_DIMENSIONS = Pattern.compile("\"width\"\\s*:\\s*(\\d+).*?\"height\"\\s*:\\s*(\\d+)");
     private static final int BG = Color.rgb(16, 24, 32);
+    private static final int REQUEST_TV_APP_PACKAGE = 7413;
     private static final int PANEL = Color.rgb(27, 39, 50);
     private static final int TEXT = Color.rgb(242, 246, 249);
     private static final int MUTED = Color.rgb(167, 183, 194);
     private static final int ACCENT = Color.rgb(155, 225, 205);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService network = Executors.newSingleThreadExecutor();
+    private final ExecutorService tvAppInstallerExecutor = Executors.newSingleThreadExecutor();
     private final Set<String> mediaUrls = new LinkedHashSet<>();
     private final Map<String, Map<String, String>> candidateHeaders = new HashMap<>();
     private final Map<String, TextView> candidateMetadataViews = new HashMap<>();
     private int candidateGeneration;
     private String pairCode;
     private PhoneBridgeServer bridgeServer;
+    private GimyaiCompatProxyServer gimyaiCompatProxyServer;
     private volatile boolean bridgeReady;
     private volatile String bridgeStartupError;
+    private volatile boolean gimyaiProxyReady;
     private int bridgePort = 8787;
+    private int gimyaiProxyPort;
     private volatile TvPointerClient pointerClient;
     private volatile WebView controllerWebView;
     private volatile String pendingControllerTvScanCallbackId = "";
+    private volatile String pendingTvAppPackageCallbackId = "";
+    private volatile boolean tvAppInstallerBusy;
+    private File selectedTvAppPackageFile;
+    private TvAppInstaller.PackageInfo selectedTvAppPackageInfo;
     private PermissionRequest pendingWebPermission;
 
     private FrameLayout controllerRoot;
@@ -152,6 +163,7 @@ public final class MainActivity extends Activity {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         initializePairingCode();
+        CompanionKeepAliveService.start(this);
         startBridgeServer();
         buildUi();
         openPhoneController();
@@ -476,6 +488,17 @@ public final class MainActivity extends Activity {
     private void startBridgeServer() {
         try {
             bridgePort = findAvailableBridgePort();
+            gimyaiProxyPort = bridgePort + 1;
+            gimyaiCompatProxyServer = new GimyaiCompatProxyServer(gimyaiProxyPort, message -> {
+                if (message.startsWith("Gimyai 相容代理已啟動")) gimyaiProxyReady = true;
+            });
+            try {
+                gimyaiCompatProxyServer.start();
+                gimyaiProxyReady = true;
+            } catch (Exception proxyError) {
+                gimyaiProxyReady = false;
+                gimyaiCompatProxyServer = null;
+            }
             bridgeServer = new PhoneBridgeServer(pairCode, message -> mainHandler.post(() -> {
                 if (message.startsWith("App 內橋接已啟動")) {
                     bridgeReady = true;
@@ -495,10 +518,17 @@ public final class MainActivity extends Activity {
     }
 
     private int findAvailableBridgePort() throws Exception {
-        for (int port = 8787; port <= 8899; port++) {
+        for (int port = 8787; port <= 8898; port++) {
+            boolean bridgeAvailable = false;
             try (ServerSocket socket = new ServerSocket()) {
                 socket.setReuseAddress(false);
                 socket.bind(new InetSocketAddress("0.0.0.0", port));
+                bridgeAvailable = true;
+            } catch (Exception occupied) {}
+            if (!bridgeAvailable) continue;
+            try (ServerSocket socket = new ServerSocket()) {
+                socket.setReuseAddress(false);
+                socket.bind(new InetSocketAddress("0.0.0.0", port + 1));
                 return port;
             } catch (Exception occupied) {}
         }
@@ -517,6 +547,8 @@ public final class MainActivity extends Activity {
             config.put("tvMac", tvPreferences().getString("tv_mac", ""));
             config.put("bridgeReady", bridgeReady);
             config.put("bridgeStatus", bridgeStartupError == null ? "" : bridgeStartupError);
+            config.put("gimyaiProxyReady", gimyaiProxyReady);
+            config.put("gimyaiProxyPort", gimyaiProxyPort);
             config.put("addresses", addressList.json());
             config.put("phoneSocketUrl", "ws://localhost:" + bridgePort + "/ws");
         } catch (Exception ignored) {}
@@ -696,6 +728,123 @@ public final class MainActivity extends Activity {
                 }
                 loadPage(normalized);
                 postControllerLaunchResult(callbackId, true, "已在手機開啟影片來源偵測。");
+            });
+        }
+
+        @JavascriptInterface
+        public void selectTvAppPackage(String callbackId) {
+            mainHandler.post(() -> {
+                if (tvAppInstallerBusy) {
+                    postControllerTvAppPackageResult(callbackId, false, "目前正在安裝，完成後再選套件。", null);
+                    return;
+                }
+                pendingTvAppPackageCallbackId = callbackId == null ? "" : callbackId;
+                Intent picker = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                picker.addCategory(Intent.CATEGORY_OPENABLE);
+                picker.setType("*/*");
+                picker.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
+                        "application/vnd.debian.binary-package", "application/x-deb", "application/octet-stream"
+                });
+                picker.putExtra(Intent.EXTRA_TITLE, "選擇 webOS .ipk 套件");
+                try {
+                    startActivityForResult(picker, REQUEST_TV_APP_PACKAGE);
+                } catch (Exception error) {
+                    pendingTvAppPackageCallbackId = "";
+                    postControllerTvAppPackageResult(callbackId, false, "無法開啟檔案選擇器。", null);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void loadBundledTvAppPackage(String callbackId) {
+            mainHandler.post(() -> {
+                if (tvAppInstallerBusy) {
+                    postControllerTvAppPackageResult(callbackId, false, "目前正在準備或安裝套件，請稍後再試。", null);
+                    return;
+                }
+                pendingTvAppPackageCallbackId = callbackId == null ? "" : callbackId;
+                tvAppInstallerBusy = true;
+                postControllerTvAppPackageProgress(pendingTvAppPackageCallbackId, "正在載入 app 內附的 webOS 套件…");
+                tvAppInstallerExecutor.execute(() -> prepareBundledTvAppPackage(pendingTvAppPackageCallbackId));
+            });
+        }
+
+        @JavascriptInterface
+        public void resetTvAppHostKey(String callbackId) {
+            mainHandler.post(() -> {
+                if (tvAppInstallerBusy) {
+                    postControllerTvAppTrustReset(callbackId, false, "安裝進行中，暫時無法重設指紋。");
+                    return;
+                }
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("重設電視 SSH 指紋？")
+                        .setMessage("這會刪除手機已信任的電視 SSH 指紋。下次安裝時會再次顯示指紋確認。只在更換電視或重設 Developer Mode 後使用。")
+                        .setNegativeButton("取消", (dialog, which) ->
+                                postControllerTvAppTrustReset(callbackId, false, "沒有變更電視 SSH 指紋。"))
+                        .setPositiveButton("重設指紋", (dialog, which) -> {
+                            File knownHosts = new File(getFilesDir(), "webos-tv-known-hosts");
+                            boolean reset = !knownHosts.exists() || knownHosts.delete();
+                            postControllerTvAppTrustReset(callbackId, reset,
+                                    reset ? "已重設；下次連線會重新要求確認 SSH 指紋。" : "無法刪除已儲存的 SSH 指紋。");
+                        })
+                        .show();
+            });
+        }
+
+        @JavascriptInterface
+        public void installSelectedTvApp(String passphrase, String callbackId) {
+            mainHandler.post(() -> {
+                if (tvAppInstallerBusy) {
+                    postControllerTvAppInstallStatus(callbackId, true, false, "已有安裝工作進行中。");
+                    return;
+                }
+                String host = configuredTvHost();
+                if (host.isEmpty()) {
+                    postControllerTvAppInstallStatus(callbackId, true, false, "請先設定電視 IP，再安裝套件。");
+                    return;
+                }
+                if (selectedTvAppPackageFile == null || selectedTvAppPackageInfo == null
+                        || !selectedTvAppPackageFile.isFile()) {
+                    postControllerTvAppInstallStatus(callbackId, true, false, "請先選擇有效的 .ipk 套件。");
+                    return;
+                }
+                String enteredPassphrase = passphrase == null ? "" : passphrase.trim();
+                if (enteredPassphrase.isEmpty()) {
+                    postControllerTvAppInstallStatus(callbackId, true, false, "請輸入電視 Developer Mode 顯示的 passphrase。");
+                    return;
+                }
+                final File packageFile = selectedTvAppPackageFile;
+                final TvAppInstaller.PackageInfo packageInfo = selectedTvAppPackageInfo;
+                final String installHost = host;
+                final String installPassphrase = enteredPassphrase;
+                String version = packageInfo.version.isEmpty() ? "" : "\n版本：" + packageInfo.version;
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("確認安裝電視 App")
+                        .setMessage("名稱：" + packageInfo.title + "\nApp ID：" + packageInfo.id + version
+                                + "\n\n目標電視：" + host + "\n\n確認後會安裝套件，不會自動開啟或切換電視畫面。")
+                        .setNegativeButton("取消", (dialog, which) ->
+                                postControllerTvAppInstallStatus(callbackId, true, false, "已取消安裝，電視沒有變更。"))
+                        .setPositiveButton("確認安裝", (dialog, which) -> {
+                            tvAppInstallerBusy = true;
+                            tvAppInstallerExecutor.execute(() -> {
+                                try {
+                                    TvAppInstaller.install(MainActivity.this, installHost, installPassphrase,
+                                            packageFile, packageInfo,
+                                            message -> postControllerTvAppInstallStatus(callbackId, false, false, message));
+                                    String message = "安裝完成：" + packageInfo.title + " · " + packageInfo.id
+                                            + (packageInfo.version.isEmpty() ? "" : " · v" + packageInfo.version)
+                                            + "。電視畫面沒有切換。";
+                                    postControllerTvAppInstallStatus(callbackId, true, true, message);
+                                } catch (Exception error) {
+                                    String message = TextUtils.isEmpty(error.getMessage())
+                                            ? "安裝失敗，請確認 Developer Mode 與電視連線。" : error.getMessage();
+                                    postControllerTvAppInstallStatus(callbackId, true, false, message);
+                                } finally {
+                                    tvAppInstallerBusy = false;
+                                }
+                            });
+                        })
+                        .show();
             });
         }
 
@@ -886,6 +1035,53 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void postControllerTvAppPackageResult(String callbackId, boolean success, String message,
+                                                 TvAppInstaller.PackageInfo packageInfo) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String packageJson = "null";
+            if (packageInfo != null) {
+                try { packageJson = packageInfo.toJson().toString(); }
+                catch (Exception ignored) {}
+            }
+            String script = "window.onNativeTvAppPackageResult && window.onNativeTvAppPackageResult("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + "," + success + ","
+                    + JSONObject.quote(message == null ? "" : message) + "," + packageJson + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
+    private void postControllerTvAppPackageProgress(String callbackId, String message) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeTvAppPackageProgress && window.onNativeTvAppPackageProgress("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + ","
+                    + JSONObject.quote(message == null ? "" : message) + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
+    private void postControllerTvAppTrustReset(String callbackId, boolean success, String message) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeTvAppTrustReset && window.onNativeTvAppTrustReset("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + "," + success + ","
+                    + JSONObject.quote(message == null ? "" : message) + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
+    private void postControllerTvAppInstallStatus(String callbackId, boolean finished, boolean success,
+                                                   String message) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeTvAppInstallStatus && window.onNativeTvAppInstallStatus("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + "," + finished + ","
+                    + success + "," + JSONObject.quote(message == null ? "" : message) + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
     private static String normalizeMac(String value) {
         if (value == null) return "";
         String mac = value.trim().replace('-', ':').toUpperCase(Locale.ROOT);
@@ -1003,6 +1199,10 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_TV_APP_PACKAGE) {
+            handleSelectedTvAppPackage(resultCode, data);
+            return;
+        }
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (result != null) {
             String contents = result.getContents();
@@ -1014,6 +1214,86 @@ public final class MainActivity extends Activity {
             return;
         }
         super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void handleSelectedTvAppPackage(int resultCode, Intent data) {
+        String callbackId = pendingTvAppPackageCallbackId;
+        pendingTvAppPackageCallbackId = "";
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            postControllerTvAppPackageResult(callbackId, false, "沒有選擇套件。", null);
+            return;
+        }
+        Uri packageUri = data.getData();
+        tvAppInstallerBusy = true;
+        postControllerTvAppPackageProgress(callbackId, "正在讀取並檢查 .ipk 套件…");
+        tvAppInstallerExecutor.execute(() -> {
+            File tempFile = null;
+            try {
+                File folder = new File(getCacheDir(), "tv-app-installer");
+                if (!folder.exists() && !folder.mkdirs()) throw new java.io.IOException("無法建立套件暫存資料夾。");
+                tempFile = new File(folder, "selected-app.tmp");
+                File readyFile = new File(folder, "selected-app.ipk");
+                long total = 0;
+                try (InputStream input = getContentResolver().openInputStream(packageUri);
+                     FileOutputStream output = new FileOutputStream(tempFile, false)) {
+                    if (input == null) throw new java.io.IOException("無法讀取選取的套件檔案。");
+                    byte[] buffer = new byte[32 * 1024];
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        total += count;
+                        if (total > 512L * 1024L * 1024L) throw new java.io.IOException("套件超過 512 MB 上限。");
+                        output.write(buffer, 0, count);
+                    }
+                }
+                TvAppInstaller.PackageInfo packageInfo = TvAppInstaller.inspect(tempFile);
+                if (readyFile.exists() && !readyFile.delete()) throw new java.io.IOException("無法替換先前選取的套件。");
+                if (!tempFile.renameTo(readyFile)) throw new java.io.IOException("無法保存已檢查的套件。");
+                selectedTvAppPackageFile = readyFile;
+                selectedTvAppPackageInfo = packageInfo;
+                tvAppInstallerBusy = false;
+                postControllerTvAppPackageResult(callbackId, true, "套件資訊已讀取。", packageInfo);
+            } catch (Exception error) {
+                if (tempFile != null && tempFile.exists()) tempFile.delete();
+                tvAppInstallerBusy = false;
+                String message = TextUtils.isEmpty(error.getMessage())
+                        ? "無法讀取這個 .ipk 套件。" : error.getMessage();
+                postControllerTvAppPackageResult(callbackId, false, message, null);
+            }
+        });
+    }
+
+    private void prepareBundledTvAppPackage(String callbackId) {
+        File tempFile = null;
+        try {
+            File folder = new File(getCacheDir(), "tv-app-installer");
+            if (!folder.exists() && !folder.mkdirs()) throw new java.io.IOException("無法建立套件暫存資料夾。");
+            tempFile = new File(folder, "bundled-app.tmp");
+            File readyFile = new File(folder, "bundled-app.ipk");
+            long total = 0;
+            try (InputStream input = getAssets().open("tv-app.ipk");
+                 FileOutputStream output = new FileOutputStream(tempFile, false)) {
+                byte[] buffer = new byte[32 * 1024];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    total += count;
+                    if (total > 512L * 1024L * 1024L) throw new java.io.IOException("內附套件超過 512 MB 上限。");
+                    output.write(buffer, 0, count);
+                }
+            }
+            TvAppInstaller.PackageInfo packageInfo = TvAppInstaller.inspect(tempFile);
+            if (readyFile.exists() && !readyFile.delete()) throw new java.io.IOException("無法替換內附套件暫存檔。");
+            if (!tempFile.renameTo(readyFile)) throw new java.io.IOException("無法保存內附套件。");
+            selectedTvAppPackageFile = readyFile;
+            selectedTvAppPackageInfo = packageInfo;
+            tvAppInstallerBusy = false;
+            postControllerTvAppPackageResult(callbackId, true, "已載入 app 內附的電視 App。", packageInfo);
+        } catch (Exception error) {
+            if (tempFile != null && tempFile.exists()) tempFile.delete();
+            tvAppInstallerBusy = false;
+            String message = TextUtils.isEmpty(error.getMessage())
+                    ? "無法讀取 app 內附的電視 App。" : error.getMessage();
+            postControllerTvAppPackageResult(callbackId, false, message, null);
+        }
     }
 
     private void handleTvPairQr(String contents) {
@@ -1093,6 +1373,9 @@ public final class MainActivity extends Activity {
                         .put("source", "phone-controller")
                         .put("controllerUrl", "ws://" + addresses.get(0) + ":" + bridgePort + "/ws")
                         .put("controllerCode", pairCode);
+                if (gimyaiProxyReady) {
+                    params.put("gimyaiProxyUrl", "http://" + addresses.get(0) + ":" + gimyaiProxyPort + "/");
+                }
                 String mediaPageUrl = input.optString("mediaPageUrl", "").trim();
                 String mediaUrl = input.optString("mediaUrl", "").trim();
                 String requestedUrl = input.optString("url", "").trim();
@@ -1801,10 +2084,13 @@ public final class MainActivity extends Activity {
             webView.destroy();
         }
         if (bridgeServer != null) bridgeServer.stopBridge();
+        if (gimyaiCompatProxyServer != null) gimyaiCompatProxyServer.stop();
+        stopService(new Intent(this, CompanionKeepAliveService.class));
         TvPointerClient activePointer = pointerClient;
         pointerClient = null;
         if (activePointer != null) activePointer.close();
         network.shutdownNow();
+        tvAppInstallerExecutor.shutdownNow();
         super.onDestroy();
     }
 }

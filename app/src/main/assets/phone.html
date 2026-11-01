@@ -45,6 +45,14 @@
     .connection-settings summary { min-height: 46px; padding: 13px 14px; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
     .connection-settings[open] { padding-bottom: 12px; }
     .connection-settings[open] > :not(summary) { margin-right: 13px; margin-left: 13px; }
+    .tv-app-package { margin: 10px 0; padding: 11px; border: 1px solid #354250; border-radius: 12px; background: #111821; }
+    .tv-app-package[hidden] { display: none; }
+    .tv-app-package strong { display: block; overflow-wrap: anywhere; color: #edf2f7; font-size: 14px; }
+    .tv-app-package code { display: block; margin-top: 5px; overflow-wrap: anywhere; color: var(--muted); font-size: 11px; }
+    .tv-app-install-actions { display: grid; gap: 8px; margin-top: 10px; }
+    .tv-app-install-actions input { width: 100%; min-height: 48px; border: 1px solid #3a4655; border-radius: 11px; padding: 11px 12px; color: #fff; background: #0e1319; font-size: 16px; }
+    .tv-app-install-actions .action-button { width: 100%; }
+    #resetTvAppHostKeyButton { width: 100%; min-height: 44px; margin-top: 6px; font-size: 12px; }
     .key-transfer-form { display: grid; gap: 10px; }
     .key-transfer-form label { color: var(--muted); font-size: 13px; }
     .key-transfer-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 7px; }
@@ -190,6 +198,26 @@
           </label>
         </form>
         <p class="status" id="tvSettingsStatus" role="status"></p>
+      </details>
+      <details class="connection-settings" id="tvAppInstallerPanel">
+        <summary>安裝電視 App（.ipk）</summary>
+        <p class="muted">Android app 已內附 webOS 電視套件，展開時會自動載入。選擇其他 .ipk 不會移除內附版本；之後可隨時切回。電視必須開啟 Developer Mode 的 Key Server，並輸入電視畫面上顯示的 passphrase。passphrase 只用於本次連線，不會儲存；請在可信任的 Wi-Fi 操作。安裝前會再次確認，完成後不會自動開啟 App 或切換電視畫面。</p>
+        <button class="action-button" id="selectTvAppPackageButton" type="button">選擇其他 .ipk 套件</button>
+        <button class="action-button" id="restoreBundledTvAppButton" type="button" hidden>改用 app 內附版本</button>
+        <section class="tv-app-package" id="tvAppPackageInfo" aria-live="polite" hidden>
+          <strong id="tvAppPackageTitle"></strong>
+          <code id="tvAppPackageId"></code>
+          <code id="tvAppPackageVersion"></code>
+          <code id="tvAppPackageSource"></code>
+        </section>
+        <div class="tv-app-install-actions">
+          <label class="muted" for="tvAppPassphraseInput">Developer Mode passphrase
+            <input id="tvAppPassphraseInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" placeholder="輸入電視 Developer Mode 顯示的 passphrase">
+          </label>
+          <button class="action-button primary" id="installTvAppButton" type="button" disabled>安裝到電視</button>
+        </div>
+        <p class="status" id="tvAppInstallStatus" role="status">展開時會自動載入 app 內附套件。</p>
+        <button class="action-button" id="resetTvAppHostKeyButton" type="button">重設已信任的電視 SSH 指紋</button>
       </details>
       <details class="connection-settings">
         <summary>Gemini 金鑰</summary>
@@ -407,6 +435,25 @@
       var settingsDialog = document.getElementById('settingsDialog');
       var tvHostForm = document.getElementById('tvHostForm');
       var tvHostInput = document.getElementById('tvHostInput');
+      var tvAppInstallerPanel = document.getElementById('tvAppInstallerPanel');
+      var selectTvAppPackageButton = document.getElementById('selectTvAppPackageButton');
+      var restoreBundledTvAppButton = document.getElementById('restoreBundledTvAppButton');
+      var tvAppPackageInfo = document.getElementById('tvAppPackageInfo');
+      var tvAppPackageTitle = document.getElementById('tvAppPackageTitle');
+      var tvAppPackageId = document.getElementById('tvAppPackageId');
+      var tvAppPackageVersion = document.getElementById('tvAppPackageVersion');
+      var tvAppPackageSource = document.getElementById('tvAppPackageSource');
+      var tvAppPassphraseInput = document.getElementById('tvAppPassphraseInput');
+      var installTvAppButton = document.getElementById('installTvAppButton');
+      var resetTvAppHostKeyButton = document.getElementById('resetTvAppHostKeyButton');
+      var tvAppInstallStatus = document.getElementById('tvAppInstallStatus');
+      var selectedTvAppPackage = null;
+      var selectedTvAppPackageIsBundled = false;
+      var tvAppPackageRequestId = null;
+      var tvAppPackageRequestSource = null;
+      var tvAppInstallRequestId = null;
+      var tvAppTrustResetRequestId = null;
+      var tvAppInstallerBusy = false;
       var tvMacForm = document.getElementById('tvMacForm');
       var tvMacInput = document.getElementById('tvMacInput');
       var tvSettingsStatus = document.getElementById('tvSettingsStatus');
@@ -453,6 +500,13 @@
         });
         sendRemoteTextButton.disabled = !pointerConnected || imeRequestPending || !remoteTextInput.value.trim();
         sendRemoteEnterButton.disabled = !pointerConnected || imeRequestPending;
+        selectTvAppPackageButton.disabled = tvAppInstallerBusy;
+        restoreBundledTvAppButton.disabled = tvAppInstallerBusy;
+        restoreBundledTvAppButton.hidden = !selectedTvAppPackage || selectedTvAppPackageIsBundled;
+        resetTvAppHostKeyButton.disabled = tvAppInstallerBusy;
+        installTvAppButton.disabled = tvAppInstallerBusy || !selectedTvAppPackage || !config || !config.tvConfigured
+          || !tvAppPassphraseInput.value.trim();
+        installTvAppButton.textContent = tvAppInstallerBusy ? '正在安裝…' : '安裝到電視';
         if (audioState === 'recording') voiceButton.textContent = '完成語音並送出';
         else if (audioState === 'waiting_reply') voiceButton.textContent = 'Gemini 回覆中…';
         else if (audioState === 'waiting_for_tv' || audioState === 'requesting') voiceButton.textContent = '正在連線…';
@@ -1514,6 +1568,52 @@
         updateConnection();
       };
 
+      window.onNativeTvAppPackageResult = function (id, success, message, packageInfo) {
+        if (id !== tvAppPackageRequestId) return;
+        var requestSource = tvAppPackageRequestSource;
+        tvAppPackageRequestId = null;
+        tvAppPackageRequestSource = null;
+        tvAppInstallerBusy = false;
+        if (!success || !packageInfo) {
+          tvAppInstallStatus.textContent = requestSource === 'external' && selectedTvAppPackage
+            ? '沒有更換套件，目前選擇仍保留。'
+            : (message || '無法讀取這個 .ipk 套件。');
+          updateConnection();
+          return;
+        }
+        selectedTvAppPackage = packageInfo;
+        selectedTvAppPackageIsBundled = requestSource === 'bundled';
+        tvAppPackageTitle.textContent = packageInfo.title || packageInfo.id;
+        tvAppPackageId.textContent = 'App ID：' + packageInfo.id;
+        tvAppPackageVersion.textContent = packageInfo.version ? '版本：' + packageInfo.version : '未提供版本號';
+        tvAppPackageSource.textContent = selectedTvAppPackageIsBundled ? '來源：app 內附版本' : '來源：選擇的 .ipk';
+        tvAppPackageInfo.hidden = false;
+        tvAppInstallStatus.textContent = message || '套件已準備好。';
+        updateConnection();
+      };
+
+      window.onNativeTvAppPackageProgress = function (id, message) {
+        if (id !== tvAppPackageRequestId) return;
+        tvAppInstallStatus.textContent = message || '正在讀取套件…';
+      };
+
+      window.onNativeTvAppInstallStatus = function (id, finished, success, message) {
+        if (id !== tvAppInstallRequestId) return;
+        tvAppInstallStatus.textContent = message || (success ? '安裝完成。' : '安裝失敗。');
+        if (finished) {
+          tvAppInstallerBusy = false;
+          tvAppInstallRequestId = null;
+          tvAppPassphraseInput.value = '';
+        }
+        updateConnection();
+      };
+
+      window.onNativeTvAppTrustReset = function (id, success, message) {
+        if (id !== tvAppTrustResetRequestId) return;
+        tvAppTrustResetRequestId = null;
+        tvAppInstallStatus.textContent = message || (success ? '已重設電視 SSH 指紋。' : '無法重設 SSH 指紋。');
+      };
+
       window.onNativeBridgeStatus = function (message) {
         if (message) {
           connectionFeedback = message;
@@ -1610,6 +1710,90 @@
       });
       document.getElementById('scanTvSettingsButton').addEventListener('click', function () {
         requestNativeTvScan(tvSettingsStatus);
+      });
+      function loadBundledTvAppPackage(force) {
+        if (tvAppInstallerBusy || (!force && selectedTvAppPackage)) return;
+        if (!window.AndroidBridge || typeof window.AndroidBridge.loadBundledTvAppPackage !== 'function') {
+          tvAppInstallStatus.textContent = '請更新並重新開啟 LG 電視 Companion App。';
+          return;
+        }
+        tvAppPackageRequestId = makeId();
+        tvAppPackageRequestSource = 'bundled';
+        tvAppInstallerBusy = true;
+        tvAppInstallStatus.textContent = '正在載入 app 內附的電視 App…';
+        updateConnection();
+        try { window.AndroidBridge.loadBundledTvAppPackage(tvAppPackageRequestId); }
+        catch (error) {
+          tvAppInstallerBusy = false;
+          tvAppPackageRequestId = null;
+          tvAppPackageRequestSource = null;
+          tvAppInstallStatus.textContent = '無法載入 app 內附的電視 App。';
+          updateConnection();
+        }
+      }
+      tvAppInstallerPanel.addEventListener('toggle', function () {
+        if (tvAppInstallerPanel.open) loadBundledTvAppPackage();
+      });
+      selectTvAppPackageButton.addEventListener('click', function () {
+        if (!window.AndroidBridge || typeof window.AndroidBridge.selectTvAppPackage !== 'function') {
+          tvAppInstallStatus.textContent = '請更新並重新開啟 LG 電視 Companion App。';
+          return;
+        }
+        tvAppPackageRequestId = makeId();
+        tvAppPackageRequestSource = 'external';
+        tvAppInstallerBusy = true;
+        tvAppInstallStatus.textContent = '請選擇電視 App 的 .ipk 套件。';
+        updateConnection();
+        try { window.AndroidBridge.selectTvAppPackage(tvAppPackageRequestId); }
+        catch (error) {
+          tvAppInstallerBusy = false;
+          tvAppPackageRequestId = null;
+          tvAppPackageRequestSource = null;
+          tvAppInstallStatus.textContent = '無法開啟檔案選擇器。';
+          updateConnection();
+        }
+      });
+      restoreBundledTvAppButton.addEventListener('click', function () {
+        loadBundledTvAppPackage(true);
+      });
+      resetTvAppHostKeyButton.addEventListener('click', function () {
+        if (tvAppInstallerBusy) return;
+        if (!window.AndroidBridge || typeof window.AndroidBridge.resetTvAppHostKey !== 'function') {
+          tvAppInstallStatus.textContent = '請更新並重新開啟 LG 電視 Companion App。';
+          return;
+        }
+        tvAppTrustResetRequestId = makeId();
+        try { window.AndroidBridge.resetTvAppHostKey(tvAppTrustResetRequestId); }
+        catch (error) {
+          tvAppTrustResetRequestId = null;
+          tvAppInstallStatus.textContent = '無法重設電視 SSH 指紋。';
+        }
+      });
+      tvAppPassphraseInput.addEventListener('input', updateConnection);
+      installTvAppButton.addEventListener('click', function () {
+        if (!selectedTvAppPackage || !config || !config.tvConfigured) {
+          tvAppInstallStatus.textContent = '請先選擇套件並設定電視 IP。';
+          return;
+        }
+        if (!tvAppPassphraseInput.value.trim()) {
+          tvAppInstallStatus.textContent = '請輸入電視 Developer Mode 顯示的 passphrase。';
+          return;
+        }
+        if (!window.AndroidBridge || typeof window.AndroidBridge.installSelectedTvApp !== 'function') {
+          tvAppInstallStatus.textContent = '請更新並重新開啟 LG 電視 Companion App。';
+          return;
+        }
+        tvAppInstallRequestId = makeId();
+        tvAppInstallerBusy = true;
+        tvAppInstallStatus.textContent = '等待確認安裝…';
+        updateConnection();
+        try { window.AndroidBridge.installSelectedTvApp(tvAppPassphraseInput.value, tvAppInstallRequestId); }
+        catch (error) {
+          tvAppInstallerBusy = false;
+          tvAppInstallRequestId = null;
+          tvAppInstallStatus.textContent = '無法開始安裝：' + (error && error.message ? error.message : '未知錯誤');
+          updateConnection();
+        }
       });
       document.getElementById('wakeTvButton').addEventListener('click', wakeTv);
       launchUrlInput.addEventListener('input', updateConnection);
