@@ -386,7 +386,7 @@
       var liveSocket = null;
       var controllerSocket = null;
       var controllerReconnectTimer = null;
-      var controllerConfig = { url: '', code: '', gimyaiProxyUrl: '' };
+      var controllerConfig = { url: '', code: '', gimyaiProxyUrl: '', yahooProxyUrl: '' };
       var controllerPhoneOnline = false;
       var phoneAudioPending = false;
       var phoneAudioActive = false;
@@ -507,20 +507,27 @@
         }
       }
 
-      function gimyaiCompatTarget(targetUrl) {
-        var base = controllerConfig.gimyaiProxyUrl;
-        if (!base) return targetUrl;
+      function compatBrowserTarget(targetUrl) {
         try {
           var target = new URL(targetUrl);
           var host = target.hostname.toLowerCase();
-          if (host !== 'gimyai.tw' && host !== 'www.gimyai.tw') return targetUrl;
+          var base = '';
+          var label = '';
+          if (host === 'gimyai.tw' || host === 'www.gimyai.tw') {
+            base = controllerConfig.gimyaiProxyUrl;
+            label = 'Gimyai Chromium 53 相容模式已套用。';
+          } else if (host === 'tw.yahoo.com' || host === 'www.tw.yahoo.com') {
+            base = controllerConfig.yahooProxyUrl;
+            label = 'Yahoo Chromium 53 相容模式已套用。';
+          }
+          if (!base) return { url: targetUrl, label: '' };
           var proxy = new URL(base);
           proxy.pathname = target.pathname;
           proxy.search = target.search;
           proxy.hash = target.hash;
-          return proxy.href;
+          return { url: proxy.href, label: label };
         } catch (error) {
-          return targetUrl;
+          return { url: targetUrl, label: '' };
         }
       }
 
@@ -550,7 +557,8 @@
         controllerConfig = {
           url: endpoint,
           code: code,
-          gimyaiProxyUrl: controllerProxyBase(params.gimyaiProxyUrl || '')
+          gimyaiProxyUrl: controllerProxyBase(params.gimyaiProxyUrl || ''),
+          yahooProxyUrl: controllerProxyBase(params.yahooProxyUrl || '')
         };
         renderControllerConnectionMark();
         connectPhoneController();
@@ -1136,9 +1144,9 @@
           showToast('請輸入有效的 http 或 https 網址。');
           return;
         }
-        var browserTarget = gimyaiCompatTarget(url);
-        if (browserTarget !== url) showToast('Gimyai Chromium 53 相容模式已套用。');
-        openInLgBrowser(browserTarget);
+        var browserTarget = compatBrowserTarget(url);
+        if (browserTarget.url !== url && browserTarget.label) showToast(browserTarget.label);
+        openInLgBrowser(browserTarget.url);
       }
 
       function openInLgBrowser(targetUrl) {

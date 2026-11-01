@@ -129,6 +129,8 @@
     .touchpad span:last-child { color: var(--muted); font-size: 13px; line-height: 1.5; }
     .remote-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
     .remote-actions .action-button { min-height: 54px; }
+    .volume-actions { grid-template-columns: 1fr 1fr; margin-top: 8px; }
+    .volume-actions .action-button { min-height: 58px; font-size: 16px; }
     .keyboard-tools { margin-top: 16px; border: 1px solid #313d4b; border-radius: 14px; background: #151c25; }
     .keyboard-tools summary { min-height: 48px; padding: 14px; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
     .keyboard-tools[open] { padding-bottom: 12px; }
@@ -347,6 +349,11 @@
           <button class="action-button" type="button" data-pointer-button="HOME" disabled>首頁</button>
           <button class="action-button" id="pointerSelectButton" type="button" disabled>選取</button>
         </div>
+        <div class="remote-actions volume-actions" aria-label="電視音量控制">
+          <button class="action-button" type="button" data-tv-volume="down" aria-label="降低電視音量" disabled>音量 −</button>
+          <button class="action-button" type="button" data-tv-volume="up" aria-label="提高電視音量" disabled>音量 +</button>
+        </div>
+        <p class="status" id="volumeStatus" role="status" aria-live="polite">第一次使用時，若電視出現音量控制授權提示，請按允許。</p>
         <p class="status" id="pointerStatus" role="status">第一次使用時，請在電視允許手機控制。</p>
         <details class="keyboard-tools">
           <summary>手機打字到電視</summary>
@@ -467,6 +474,9 @@
       var imeStatus = document.getElementById('imeStatus');
       var imeRequestId = null;
       var imeRequestPending = false;
+      var volumeStatus = document.getElementById('volumeStatus');
+      var volumeRequestId = null;
+      var volumeRequestPending = false;
       var audioSupported = !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
 
       function updateConnection() {
@@ -497,6 +507,9 @@
         pointerSelectButton.disabled = !pointerConnected;
         Array.prototype.forEach.call(document.querySelectorAll('[data-pointer-button]'), function (button) {
           button.disabled = !pointerConnected;
+        });
+        Array.prototype.forEach.call(document.querySelectorAll('[data-tv-volume]'), function (button) {
+          button.disabled = !config || !config.tvConfigured || volumeRequestPending;
         });
         sendRemoteTextButton.disabled = !pointerConnected || imeRequestPending || !remoteTextInput.value.trim();
         sendRemoteEnterButton.disabled = !pointerConnected || imeRequestPending;
@@ -782,6 +795,32 @@
         } catch (error) { return false; }
       }
 
+      function requestTvVolume(direction) {
+        if (volumeRequestPending) return;
+        if (!config || !config.tvConfigured) {
+          volumeStatus.textContent = '請先掃描電視 QR code 或設定電視 IP。';
+          return;
+        }
+        if (!window.AndroidBridge || typeof window.AndroidBridge.changeTvVolume !== 'function') {
+          volumeStatus.textContent = '請更新並重新開啟 Companion App 後再試。';
+          return;
+        }
+        volumeRequestId = makeId();
+        volumeRequestPending = true;
+        volumeStatus.textContent = direction === 'up'
+          ? '正在調高音量…若電視出現授權提示，請按允許。'
+          : '正在調低音量…若電視出現授權提示，請按允許。';
+        updateConnection();
+        try {
+          window.AndroidBridge.changeTvVolume(direction, volumeRequestId);
+        } catch (error) {
+          volumeRequestPending = false;
+          volumeRequestId = null;
+          volumeStatus.textContent = '音量控制呼叫失敗：' + (error && error.message ? error.message : String(error || '未知錯誤'));
+          updateConnection();
+        }
+      }
+
       function pointFromTouch(touch) {
         return { x: touch.clientX, y: touch.clientY };
       }
@@ -978,12 +1017,23 @@
       remoteTextInput.addEventListener('input', updateConnection);
       sendRemoteTextButton.addEventListener('click', function () { requestImeAction(false); });
       sendRemoteEnterButton.addEventListener('click', function () { requestImeAction(true); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-tv-volume]'), function (button) {
+        button.addEventListener('click', function () { requestTvVolume(button.getAttribute('data-tv-volume')); });
+      });
 
       window.onNativeImeStatus = function (callbackId, success, message) {
         if (!imeRequestPending || callbackId !== imeRequestId) return;
         imeRequestPending = false;
         imeRequestId = null;
         imeStatus.textContent = message || (success ? '已送到電視。' : '電視文字輸入失敗。');
+        updateConnection();
+      };
+
+      window.onNativeVolumeStatus = function (callbackId, success, message) {
+        if (!volumeRequestPending || callbackId !== volumeRequestId) return;
+        volumeRequestPending = false;
+        volumeRequestId = null;
+        volumeStatus.textContent = message || (success ? '電視音量已調整。' : '電視音量控制失敗。');
         updateConnection();
       };
 
@@ -1663,6 +1713,9 @@
             connectPointer();
           } else if (selectedPanel !== 'panelRemote' && wasRemotePanelActive) {
             disconnectPointer(true, '已離開遙控器頁，觸控板連線已暫停。');
+            if (window.AndroidBridge && typeof window.AndroidBridge.disconnectTvVolume === 'function') {
+              try { window.AndroidBridge.disconnectTvVolume(); } catch (error) {}
+            }
           }
         });
         button.addEventListener('keydown', function (event) {

@@ -92,6 +92,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.security.SecureRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -120,12 +121,17 @@ public final class MainActivity extends Activity {
     private String pairCode;
     private PhoneBridgeServer bridgeServer;
     private GimyaiCompatProxyServer gimyaiCompatProxyServer;
+    private GimyaiCompatProxyServer yahooCompatProxyServer;
     private volatile boolean bridgeReady;
     private volatile String bridgeStartupError;
     private volatile boolean gimyaiProxyReady;
+    private volatile boolean yahooProxyReady;
     private int bridgePort = 8787;
     private int gimyaiProxyPort;
+    private int yahooProxyPort;
     private volatile TvPointerClient pointerClient;
+    private volatile TvAudioClient tvAudioClient;
+    private final AtomicBoolean tvVolumeRequestPending = new AtomicBoolean(false);
     private volatile WebView controllerWebView;
     private volatile String pendingControllerTvScanCallbackId = "";
     private volatile String pendingTvAppPackageCallbackId = "";
@@ -489,6 +495,7 @@ public final class MainActivity extends Activity {
         try {
             bridgePort = findAvailableBridgePort();
             gimyaiProxyPort = bridgePort + 1;
+            yahooProxyPort = bridgePort + 2;
             gimyaiCompatProxyServer = new GimyaiCompatProxyServer(gimyaiProxyPort, message -> {
                 if (message.startsWith("Gimyai 相容代理已啟動")) gimyaiProxyReady = true;
             });
@@ -498,6 +505,16 @@ public final class MainActivity extends Activity {
             } catch (Exception proxyError) {
                 gimyaiProxyReady = false;
                 gimyaiCompatProxyServer = null;
+            }
+            yahooCompatProxyServer = new GimyaiCompatProxyServer(yahooProxyPort, true, message -> {
+                if (message.startsWith("Yahoo 相容代理已啟動")) yahooProxyReady = true;
+            });
+            try {
+                yahooCompatProxyServer.start();
+                yahooProxyReady = true;
+            } catch (Exception proxyError) {
+                yahooProxyReady = false;
+                yahooCompatProxyServer = null;
             }
             bridgeServer = new PhoneBridgeServer(pairCode, message -> mainHandler.post(() -> {
                 if (message.startsWith("App 內橋接已啟動")) {
@@ -518,19 +535,18 @@ public final class MainActivity extends Activity {
     }
 
     private int findAvailableBridgePort() throws Exception {
-        for (int port = 8787; port <= 8898; port++) {
-            boolean bridgeAvailable = false;
-            try (ServerSocket socket = new ServerSocket()) {
-                socket.setReuseAddress(false);
-                socket.bind(new InetSocketAddress("0.0.0.0", port));
-                bridgeAvailable = true;
-            } catch (Exception occupied) {}
-            if (!bridgeAvailable) continue;
-            try (ServerSocket socket = new ServerSocket()) {
-                socket.setReuseAddress(false);
-                socket.bind(new InetSocketAddress("0.0.0.0", port + 1));
-                return port;
-            } catch (Exception occupied) {}
+        for (int port = 8787; port <= 8896; port++) {
+            boolean available = true;
+            for (int offset = 0; offset <= 2; offset++) {
+                try (ServerSocket socket = new ServerSocket()) {
+                    socket.setReuseAddress(false);
+                    socket.bind(new InetSocketAddress("0.0.0.0", port + offset));
+                } catch (Exception occupied) {
+                    available = false;
+                    break;
+                }
+            }
+            if (available) return port;
         }
         throw new IllegalStateException("沒有可用的本機橋接連接埠。");
     }
@@ -549,6 +565,8 @@ public final class MainActivity extends Activity {
             config.put("bridgeStatus", bridgeStartupError == null ? "" : bridgeStartupError);
             config.put("gimyaiProxyReady", gimyaiProxyReady);
             config.put("gimyaiProxyPort", gimyaiProxyPort);
+            config.put("yahooProxyReady", yahooProxyReady);
+            config.put("yahooProxyPort", yahooProxyPort);
             config.put("addresses", addressList.json());
             config.put("phoneSocketUrl", "ws://localhost:" + bridgePort + "/ws");
         } catch (Exception ignored) {}
@@ -862,7 +880,9 @@ public final class MainActivity extends Activity {
                 }
                 String oldHost = tvPreferences().getString("tv_host", "");
                 SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", normalized);
-                if (!normalized.equalsIgnoreCase(oldHost)) editor.remove("tv_client_key").remove("tv_mac");
+                if (!normalized.equalsIgnoreCase(oldHost)) {
+                    editor.remove("tv_client_key").remove("tv_audio_client_key").remove("tv_mac");
+                }
                 editor.apply();
                 setControllerStatus("電視位址已儲存：" + normalized);
                 postControllerSettingsResult(callbackId, true, "電視位址已儲存。請確認手機和電視使用同一個 Wi-Fi。");
@@ -986,6 +1006,53 @@ public final class MainActivity extends Activity {
             }
             current.sendEnter((success, message) -> postControllerImeStatus(callbackId, success, message));
         }
+
+        @JavascriptInterface
+        public void changeTvVolume(String direction, String callbackId) {
+            String normalized = direction == null ? "" : direction.trim().toLowerCase(Locale.ROOT);
+            if (!"up".equals(normalized) && !"down".equals(normalized)) {
+                postControllerVolumeStatus(callbackId, false, "音量方向無效，請重試。");
+                return;
+            }
+            String host = configuredTvHost();
+            if (host.isEmpty()) {
+                postControllerVolumeStatus(callbackId, false, "請先掃描電視 QR code 或設定電視 IP。");
+                return;
+            }
+            if (!tvVolumeRequestPending.compareAndSet(false, true)) {
+                postControllerVolumeStatus(callbackId, false, "上一個音量指令仍在處理，請稍候再按。");
+                return;
+            }
+
+            String clientKey = tvPreferences().getString("tv_audio_client_key", "");
+            final TvAudioClient[] holder = new TvAudioClient[1];
+            try {
+                TvAudioClient next = new TvAudioClient(host, clientKey, "up".equals(normalized),
+                        (success, message, returnedKey) -> {
+                            if (!TextUtils.isEmpty(returnedKey)) {
+                                tvPreferences().edit().putString("tv_audio_client_key", returnedKey).apply();
+                            }
+                            if (tvAudioClient == holder[0]) tvAudioClient = null;
+                            tvVolumeRequestPending.set(false);
+                            postControllerVolumeStatus(callbackId, success, message);
+                        });
+                holder[0] = next;
+                tvAudioClient = next;
+                Thread volumeThread = new Thread(next::connect, "lg-tv-volume-connect");
+                volumeThread.setDaemon(true);
+                volumeThread.start();
+            } catch (Exception error) {
+                tvVolumeRequestPending.set(false);
+                String detail = TextUtils.isEmpty(error.getMessage())
+                        ? error.getClass().getSimpleName() : error.getMessage();
+                postControllerVolumeStatus(callbackId, false, "無法準備電視音量連線（" + detail + "）。");
+            }
+        }
+
+        @JavascriptInterface
+        public void disconnectTvVolume() {
+            stopTvAudioClient();
+        }
     }
 
     private void postControllerPointerStatus(boolean connected, String message) {
@@ -1002,6 +1069,23 @@ public final class MainActivity extends Activity {
         pointerClient = null;
         if (activePointer != null) activePointer.close();
         if (!TextUtils.isEmpty(message)) postControllerPointerStatus(false, message);
+    }
+
+    private void stopTvAudioClient() {
+        TvAudioClient activeAudio = tvAudioClient;
+        tvAudioClient = null;
+        if (activeAudio != null) activeAudio.close();
+        tvVolumeRequestPending.set(false);
+    }
+
+    private void postControllerVolumeStatus(String callbackId, boolean success, String message) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeVolumeStatus && window.onNativeVolumeStatus("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + ","
+                    + success + "," + JSONObject.quote(message == null ? "" : message) + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
     }
 
     private void postControllerImeStatus(String callbackId, boolean success, String message) {
@@ -1321,7 +1405,9 @@ public final class MainActivity extends Activity {
         final String tvMac = mac;
         String oldHost = tvPreferences().getString("tv_host", "");
         SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", tvHost);
-        if (!tvHost.equalsIgnoreCase(oldHost)) editor.remove("tv_client_key").remove("tv_mac");
+        if (!tvHost.equalsIgnoreCase(oldHost)) {
+            editor.remove("tv_client_key").remove("tv_audio_client_key").remove("tv_mac");
+        }
         if (!tvMac.isEmpty()) editor.putString("tv_mac", tvMac);
         editor.apply();
         setControllerStatus("已掃描到電視 " + tvHost
@@ -1375,6 +1461,9 @@ public final class MainActivity extends Activity {
                         .put("controllerCode", pairCode);
                 if (gimyaiProxyReady) {
                     params.put("gimyaiProxyUrl", "http://" + addresses.get(0) + ":" + gimyaiProxyPort + "/");
+                }
+                if (yahooProxyReady) {
+                    params.put("yahooProxyUrl", "http://" + addresses.get(0) + ":" + yahooProxyPort + "/");
                 }
                 String mediaPageUrl = input.optString("mediaPageUrl", "").trim();
                 String mediaUrl = input.optString("mediaUrl", "").trim();
@@ -2052,6 +2141,7 @@ public final class MainActivity extends Activity {
     protected void onPause() {
         mainHandler.removeCallbacks(playbackInfoPoller);
         stopPointerClient("手機 App 進入背景，觸控板已暫停；回到遙控器頁會自動重連。");
+        stopTvAudioClient();
         super.onPause();
     }
 
@@ -2085,10 +2175,12 @@ public final class MainActivity extends Activity {
         }
         if (bridgeServer != null) bridgeServer.stopBridge();
         if (gimyaiCompatProxyServer != null) gimyaiCompatProxyServer.stop();
+        if (yahooCompatProxyServer != null) yahooCompatProxyServer.stop();
         stopService(new Intent(this, CompanionKeepAliveService.class));
         TvPointerClient activePointer = pointerClient;
         pointerClient = null;
         if (activePointer != null) activePointer.close();
+        stopTvAudioClient();
         network.shutdownNow();
         tvAppInstallerExecutor.shutdownNow();
         super.onDestroy();

@@ -12,12 +12,12 @@ LG TV Companion 由 Android 手機 companion 和 LG webOS 電視 App 組成，�
 | `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、手機控制及支援的影片串流播放 |
 | `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-目前版本：Android companion `1.4.36`、webOS TV App `1.4.17`。Android APK 已內附 TV App IPK，可從手機安裝到電視。
+目前版本：Android companion `1.4.38`、webOS TV App `1.4.18`。Android APK 已內附 TV App IPK，可從手機安裝到電視。
 
 ### 下載
 
-- [Android companion APK v1.4.36](releases/LGTVCompanion-Android-v1.4.36.apk) — 內含 webOS TV v1.4.17 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
-- [LG webOS TV IPK v1.4.17](releases/com.example.hellotv_1.4.17_all.ipk)
+- [Android companion APK v1.4.38](releases/LGTVCompanion-Android-v1.4.38.apk) — 內含 webOS TV v1.4.18 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [LG webOS TV IPK v1.4.18](releases/com.example.hellotv_1.4.18_all.ipk)
 - [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 
 ### 初次設定
@@ -32,10 +32,10 @@ LG TV Companion 由 Android 手機 companion 和 LG webOS 電視 App 組成，�
 
 ### 功能與限制
 
-- 手機可控制電視游標、輸入文字、開啟網址、管理網站收藏，也可將支援的影片串流交給電視播放。
+- 手機可調整電視音量、控制游標、輸入文字、開啟網址、管理網站收藏，也可將支援的影片串流交給電視播放。首次使用音量鍵時，需在電視允許音量控制。
 - Android companion APK 內附 webOS TV IPK。安裝器會顯示電視回報的安裝進度；若兩分鐘內未取得完成回報，電視端仍可能在背景安裝，請先查看電視 App 清單再重試。
-- 手機控制橋接服務和 Gimyai 相容代理都由 Android companion 提供，不需要另外安裝或啟動 Termux bridge。使用期間 Android 會顯示持續通知；請勿強制停止 companion。
-- Gimyai 相容代理針對舊版 Chromium 的 CSS 排版問題提供備援，也會移除已知第三方廣告載入器與彈出跳轉。其他網站仍直接交由 LG 瀏覽器開啟。
+- 手機控制橋接服務、Gimyai 與 Yahoo 台灣相容代理都由 Android companion 提供，不需要另外安裝或啟動 Termux bridge。使用期間 Android 會顯示持續通知；請勿強制停止 companion。
+- Gimyai 相容代理針對舊版 Chromium 的 CSS 排版問題提供備援，也會移除已知第三方廣告載入器與彈出跳轉。Yahoo 台灣相容代理會展開新版 CSS cascade layers，並補上舊版 Chromium 的 flex/grid 排版備援；這仍是實驗性相容處理，Yahoo 的新 JavaScript 功能可能無法完整運作。其他網站仍直接交由 LG 瀏覽器開啟。
 - 切到「遙控器」分頁時會自動連線觸控板；離開分頁或 companion 進入背景時會暫停，回到遙控器分頁時再連線。短暫斷線後會逐步重試。
 - Android companion 可送出 Wi-Fi Wake-on-LAN 封包。電視需接著電源，並開啟「一般 → Mobile TV On → Turn on via Wi-Fi」。能否喚醒仍取決於電視韌體和路由器設定，目前尚未在目標電視上實測。
 - Gemini Live 可用文字或手機麥克風音訊對話，並開啟收藏網站或使用者提供的完整網址。手機也可將 Gemini API 金鑰傳送到電視保存。webOS TV v1.4.12 暫時停用 Google Search grounding。
@@ -81,12 +81,12 @@ LG TV Companion consists of an Android phone companion and an LG webOS TV app. I
 | `webos-tv/app/` | LG webOS TV app: website and bookmark management, Gemini conversations, phone control, and supported video playback |
 | `releases/` | Android APKs, webOS IPKs, and SHA-256 checksums |
 
-Current versions: Android companion `1.4.36` and webOS TV app `1.4.17`. The Android APK bundles the TV app IPK so it can be installed from the phone.
+Current versions: Android companion `1.4.38` and webOS TV app `1.4.18`. The Android APK bundles the TV app IPK so it can be installed from the phone.
 
 ### Downloads
 
-- [Android companion APK v1.4.36](releases/LGTVCompanion-Android-v1.4.36.apk) — includes webOS TV app v1.4.17; debug-signed for sideloading and not a Play Store release.
-- [LG webOS TV app IPK v1.4.17](releases/com.example.hellotv_1.4.17_all.ipk)
+- [Android companion APK v1.4.38](releases/LGTVCompanion-Android-v1.4.38.apk) — includes webOS TV app v1.4.18; debug-signed for sideloading and not a Play Store release.
+- [LG webOS TV app IPK v1.4.18](releases/com.example.hellotv_1.4.18_all.ipk)
 - [SHA-256 checksums](releases/SHA256SUMS.txt)
 
 ### Getting started
@@ -101,10 +101,10 @@ TV app installation uses the Developer Mode Key Server to retrieve the SSH key (
 
 ### Features and limitations
 
-- Use the phone to move the TV pointer, enter text, open URLs, manage website bookmarks, and send supported video streams to the TV.
+- Use the phone to adjust TV volume, move the TV pointer, enter text, open URLs, manage website bookmarks, and send supported video streams to the TV. The first volume command requires permission on the TV.
 - The Android APK includes the webOS TV app IPK. The installer displays installation progress reported by the TV. If no completion response arrives within two minutes, the TV may still be installing in the background; check the TV's app list before retrying.
-- Android companion provides both the phone-control bridge and the Gimyai compatibility proxy. No separate Termux bridge is required. Android displays an ongoing notification while these services are active; do not force-stop the companion.
-- The Gimyai proxy provides CSS layout fallbacks for older Chromium and removes known third-party ad loaders and popup redirects. Other websites are opened by the LG browser.
+- Android companion provides the phone-control bridge and the Gimyai and Yahoo Taiwan compatibility proxies. No separate Termux bridge is required. Android displays an ongoing notification while these services are active; do not force-stop the companion.
+- The Gimyai proxy provides CSS layout fallbacks for older Chromium and removes known third-party ad loaders and popup redirects. The Yahoo Taiwan proxy unwraps modern CSS cascade layers and adds flex/grid layout fallbacks for older Chromium. This compatibility path is experimental; newer Yahoo JavaScript features may still fail. Other websites are opened by the LG browser.
 - The touchpad connects when you enter the **Remote** tab, pauses when you leave the tab or the companion goes to the background, and reconnects when you return. It retries gradually after a brief disconnect.
 - Android companion can send a Wi-Fi Wake-on-LAN packet. The TV must remain connected to power, and **General → Mobile TV On → Turn on via Wi-Fi** must be enabled. Wake support depends on the TV firmware and router configuration and has not been verified on the target TV.
 - Gemini Live supports text and phone-microphone audio conversations and can open bookmarked sites or a full URL provided by the user. The phone can also send a Gemini API key to the TV for local storage. Google Search grounding is temporarily disabled in webOS TV v1.4.12.

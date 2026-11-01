@@ -16,22 +16,32 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** LAN-only reverse proxy that adds legacy CSS fallbacks to Gimyai pages for webOS 4.x. */
+/** LAN-only site proxy that adds legacy CSS fallbacks for selected webOS 4.x pages. */
 final class GimyaiCompatProxyServer {
     interface Listener {
         void onProxyStatus(String message);
     }
 
-    private static final String UPSTREAM = "https://gimyai.tw";
+    private static final String GIMYAI_UPSTREAM = "https://gimyai.tw";
+    private static final String YAHOO_UPSTREAM = "https://tw.yahoo.com";
+    private static final String YAHOO_STATIC_UPSTREAM = "https://s.yimg.com";
+    private static final String YAHOO_STATIC_PREFIX = "/_yahoo_static";
     private static final String TV_USER_AGENT = "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 "
             + "(KHTML, like Gecko) Chrome/53.0.2785.34 Safari/537.36 WebAppManager";
     private static final Pattern GIMYAI_ORIGIN = Pattern.compile(
             "(?i)(?:https?:)?//(?:www\\.)?gimyai\\.tw(?=[:/?#\\\"'\\s]|$)");
+    private static final Pattern YAHOO_ORIGIN = Pattern.compile(
+            "(?i)(?:https?:)?//(?:www\\.)?tw\\.yahoo\\.com(?=[:/?#\\\"'\\s]|$)");
+    private static final Pattern YAHOO_STATIC_ORIGIN = Pattern.compile(
+            "(?i)(?:https?:)?//s\\.yimg\\.com(?=[:/?#\\\"'\\s]|$)");
+    private static final Pattern CSS_ROOT_URL = Pattern.compile("(?i)(url\\(\\s*['\\\"]?)(/)(?!/)");
     private static final int MAX_TEXT_RESPONSE = 10 * 1024 * 1024;
     private static final String LEGACY_CSS = "\n"
             + "/* webOS 4.x / Chromium 53 layout fallbacks for Gimyai */\n"
@@ -73,16 +83,33 @@ final class GimyaiCompatProxyServer {
             + ".player .player-frame{top:0!important;right:0!important;bottom:0!important;left:0!important}\n"
             + "@media(max-width:900px){.grid>.poster{width:calc(33.3333% - 18px)!important;"
             + "max-width:calc(33.3333% - 18px)!important;flex-basis:calc(33.3333% - 18px)!important}}\n";
+    private static final String YAHOO_LEGACY_CSS = "\n"
+            + "/* webOS 4.x / Chromium 53 fallbacks for Yahoo Taiwan */\n"
+            + "html,body{min-width:320px;}\n"
+            + ".flex.gap-1>*{margin:2px!important}.flex.gap-2>*{margin:4px!important}\n"
+            + ".flex.gap-3>*{margin:6px!important}.flex.gap-4>*{margin:8px!important}\n"
+            + ".flex.gap-6>*{margin:12px!important}.flex.gap-8>*{margin:16px!important}\n"
+            + ".grid{display:flex!important;flex-wrap:wrap!important;gap:0!important}\n"
+            + ".grid-cols-1>*{box-sizing:border-box!important;flex:0 0 100%!important;max-width:100%!important}\n"
+            + ".grid-cols-2>*{box-sizing:border-box!important;flex:0 0 50%!important;max-width:50%!important}\n"
+            + ".grid-cols-3>*{box-sizing:border-box!important;flex:0 0 33.3333%!important;max-width:33.3333%!important}\n"
+            + ".grid-cols-4>*{box-sizing:border-box!important;flex:0 0 25%!important;max-width:25%!important}\n";
 
     private final int port;
     private final Listener listener;
+    private final boolean yahooMode;
     private final ExecutorService workers = Executors.newCachedThreadPool();
     private volatile boolean running;
     private ServerSocket serverSocket;
     private Thread acceptThread;
 
     GimyaiCompatProxyServer(int port, Listener listener) {
+        this(port, false, listener);
+    }
+
+    GimyaiCompatProxyServer(int port, boolean yahooMode, Listener listener) {
         this.port = port;
+        this.yahooMode = yahooMode;
         this.listener = listener;
     }
 
@@ -91,10 +118,10 @@ final class GimyaiCompatProxyServer {
         serverSocket.setReuseAddress(false);
         serverSocket.bind(new InetSocketAddress("0.0.0.0", port), 16);
         running = true;
-        acceptThread = new Thread(this::acceptLoop, "gimyai-compat-proxy");
+        acceptThread = new Thread(this::acceptLoop, yahooMode ? "yahoo-compat-proxy" : "gimyai-compat-proxy");
         acceptThread.setDaemon(true);
         acceptThread.start();
-        if (listener != null) listener.onProxyStatus("Gimyai 相容代理已啟動");
+        if (listener != null) listener.onProxyStatus(yahooMode ? "Yahoo 相容代理已啟動" : "Gimyai 相容代理已啟動");
     }
 
     void stop() {
@@ -113,7 +140,8 @@ final class GimyaiCompatProxyServer {
                 client.setTcpNoDelay(true);
                 workers.execute(() -> handle(client));
             } catch (IOException error) {
-                if (running && listener != null) listener.onProxyStatus("Gimyai 相容代理連線中斷：" + error.getMessage());
+                if (running && listener != null) listener.onProxyStatus(
+                        (yahooMode ? "Yahoo" : "Gimyai") + " 相容代理連線中斷：" + error.getMessage());
                 return;
             }
         }
@@ -159,14 +187,20 @@ final class GimyaiCompatProxyServer {
                 writeError(socket.getOutputStream(), 400, "Invalid path");
                 return;
             }
-            if ("/template/gimyai/js/mt11.js".equals(path)) {
+            if (!yahooMode && "/template/gimyai/js/mt11.js".equals(path)) {
                 byte[] blockedLoader = "/* Gimyai compatibility mode: blocked third-party ad loader. */".getBytes(StandardCharsets.UTF_8);
                 writeHeaders(socket.getOutputStream(), 200, "application/javascript; charset=UTF-8", blockedLoader.length, false);
                 if (!"HEAD".equals(method)) socket.getOutputStream().write(blockedLoader);
                 socket.getOutputStream().flush();
                 return;
             }
-            String target = UPSTREAM + path + (requestUri.getRawQuery() == null ? "" : "?" + requestUri.getRawQuery());
+            boolean yahooStaticRequest = yahooMode && path.startsWith(YAHOO_STATIC_PREFIX + "/");
+            String upstreamPath = yahooStaticRequest ? path.substring(YAHOO_STATIC_PREFIX.length()) : path;
+            String upstreamBase = yahooMode
+                    ? (yahooStaticRequest ? YAHOO_STATIC_UPSTREAM : YAHOO_UPSTREAM)
+                    : GIMYAI_UPSTREAM;
+            String target = upstreamBase + upstreamPath
+                    + (requestUri.getRawQuery() == null ? "" : "?" + requestUri.getRawQuery());
             upstream = (HttpURLConnection) new URL(target).openConnection();
             upstream.setInstanceFollowRedirects(true);
             upstream.setConnectTimeout(12000);
@@ -176,7 +210,7 @@ final class GimyaiCompatProxyServer {
             upstream.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml,text/css,*/*;q=0.8");
             upstream.setRequestProperty("Accept-Language", "zh-TW,zh;q=0.9,en;q=0.7");
             upstream.setRequestProperty("Accept-Encoding", "identity");
-            upstream.setRequestProperty("Referer", UPSTREAM + "/");
+            upstream.setRequestProperty("Referer", yahooMode ? YAHOO_UPSTREAM + "/" : GIMYAI_UPSTREAM + "/");
 
             int status = upstream.getResponseCode();
             String contentType = upstream.getContentType();
@@ -188,12 +222,21 @@ final class GimyaiCompatProxyServer {
                 byte[] original = body == null ? new byte[0] : readLimited(body, MAX_TEXT_RESPONSE);
                 String text = new String(original, StandardCharsets.UTF_8);
                 String localOrigin = "http://" + localHost;
-                text = rewriteGimyaiOrigin(text, localOrigin);
-                if (contentType.toLowerCase(Locale.US).contains("text/html")) {
-                    text = stripKnownAdLoaders(text);
-                    text = injectPopupGuard(text);
+                if (yahooMode) {
+                    text = rewriteYahooOrigins(text, localOrigin);
+                    if (contentType.toLowerCase(Locale.US).contains("text/css")) {
+                        text = stripCssLayerWrappers(text);
+                        text = rewriteCssRootUrls(text, localOrigin);
+                        text += YAHOO_LEGACY_CSS;
+                    }
+                } else {
+                    text = rewriteGimyaiOrigin(text, localOrigin);
+                    if (contentType.toLowerCase(Locale.US).contains("text/html")) {
+                        text = stripKnownAdLoaders(text);
+                        text = injectPopupGuard(text);
+                    }
+                    if (contentType.toLowerCase(Locale.US).contains("text/css")) text += LEGACY_CSS;
                 }
-                if (contentType.toLowerCase(Locale.US).contains("text/css")) text += LEGACY_CSS;
                 byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
                 writeHeaders(output, status, contentTypeWithUtf8(contentType), bytes.length, false);
                 if (!"HEAD".equals(method)) output.write(bytes);
@@ -207,8 +250,11 @@ final class GimyaiCompatProxyServer {
             }
             output.flush();
         } catch (Exception error) {
-            android.util.Log.e("GimyaiCompatProxy", "Request failed", error);
-            try { writeError(client.getOutputStream(), 502, "Gimyai proxy error: " + safeMessage(error)); }
+            android.util.Log.e(yahooMode ? "YahooCompatProxy" : "GimyaiCompatProxy", "Request failed", error);
+            try {
+                writeError(client.getOutputStream(), 502,
+                        (yahooMode ? "Yahoo" : "Gimyai") + " proxy error: " + safeMessage(error));
+            }
             catch (Exception ignored) {}
         } finally {
             if (upstream != null) upstream.disconnect();
@@ -234,6 +280,118 @@ final class GimyaiCompatProxyServer {
         while (matcher.find()) matcher.appendReplacement(rewritten, Matcher.quoteReplacement(localOrigin));
         matcher.appendTail(rewritten);
         return rewritten.toString();
+    }
+
+    private static String rewriteYahooOrigins(String text, String localOrigin) {
+        Matcher yahoo = YAHOO_ORIGIN.matcher(text);
+        StringBuffer rewritten = new StringBuffer(text.length());
+        while (yahoo.find()) yahoo.appendReplacement(rewritten, Matcher.quoteReplacement(localOrigin));
+        yahoo.appendTail(rewritten);
+
+        Matcher staticAssets = YAHOO_STATIC_ORIGIN.matcher(rewritten.toString());
+        StringBuffer withStaticAssets = new StringBuffer(rewritten.length());
+        String staticOrigin = localOrigin + YAHOO_STATIC_PREFIX;
+        while (staticAssets.find()) {
+            staticAssets.appendReplacement(withStaticAssets, Matcher.quoteReplacement(staticOrigin));
+        }
+        staticAssets.appendTail(withStaticAssets);
+        return withStaticAssets.toString();
+    }
+
+    private static String rewriteCssRootUrls(String css, String localOrigin) {
+        Matcher matcher = CSS_ROOT_URL.matcher(css);
+        StringBuffer rewritten = new StringBuffer(css.length());
+        String staticOrigin = localOrigin + YAHOO_STATIC_PREFIX;
+        while (matcher.find()) {
+            matcher.appendReplacement(rewritten, Matcher.quoteReplacement(
+                    matcher.group(1) + staticOrigin + matcher.group(2)));
+        }
+        matcher.appendTail(rewritten);
+        return rewritten.toString();
+    }
+
+    /** Removes unsupported CSS cascade-layer wrappers while preserving nested rules and their order. */
+    private static String stripCssLayerWrappers(String css) {
+        StringBuilder output = new StringBuilder(css.length());
+        Deque<Boolean> layerBlocks = new ArrayDeque<>();
+        int index = 0;
+        while (index < css.length()) {
+            if (index + 1 < css.length() && css.charAt(index) == '/' && css.charAt(index + 1) == '*') {
+                int end = css.indexOf("*/", index + 2);
+                end = end < 0 ? css.length() : end + 2;
+                output.append(css, index, end);
+                index = end;
+                continue;
+            }
+            char current = css.charAt(index);
+            if (current == '\'' || current == '"') {
+                int end = skipCssString(css, index);
+                output.append(css, index, end);
+                index = end;
+                continue;
+            }
+            if (current == '@' && startsCssLayerAtRule(css, index)) {
+                int delimiter = findCssLayerDelimiter(css, index + 6);
+                if (delimiter >= 0 && css.charAt(delimiter) == '{') {
+                    layerBlocks.push(Boolean.TRUE);
+                    index = delimiter + 1;
+                    continue;
+                }
+                if (delimiter >= 0 && css.charAt(delimiter) == ';') {
+                    output.append(css, index, delimiter + 1);
+                    index = delimiter + 1;
+                    continue;
+                }
+            }
+            if (current == '{') {
+                layerBlocks.push(Boolean.FALSE);
+                output.append(current);
+            } else if (current == '}') {
+                if (layerBlocks.isEmpty() || !layerBlocks.pop()) output.append(current);
+            } else {
+                output.append(current);
+            }
+            index++;
+        }
+        return output.toString();
+    }
+
+    private static boolean startsCssLayerAtRule(String css, int index) {
+        if (!css.regionMatches(true, index, "@layer", 0, 6)) return false;
+        int after = index + 6;
+        return after >= css.length() || !Character.isLetterOrDigit(css.charAt(after))
+                && css.charAt(after) != '_' && css.charAt(after) != '-';
+    }
+
+    private static int findCssLayerDelimiter(String css, int index) {
+        int parentheses = 0;
+        while (index < css.length()) {
+            char current = css.charAt(index);
+            if (current == '\'' || current == '"') {
+                index = skipCssString(css, index);
+                continue;
+            }
+            if (index + 1 < css.length() && current == '/' && css.charAt(index + 1) == '*') {
+                int end = css.indexOf("*/", index + 2);
+                index = end < 0 ? css.length() : end + 2;
+                continue;
+            }
+            if (current == '(') parentheses++;
+            else if (current == ')' && parentheses > 0) parentheses--;
+            else if (parentheses == 0 && (current == '{' || current == ';')) return index;
+            index++;
+        }
+        return -1;
+    }
+
+    private static int skipCssString(String css, int index) {
+        char quote = css.charAt(index++);
+        while (index < css.length()) {
+            char current = css.charAt(index++);
+            if (current == '\\' && index < css.length()) index++;
+            else if (current == quote) break;
+        }
+        return index;
     }
 
     private static String injectPopupGuard(String html) {
@@ -320,8 +478,8 @@ final class GimyaiCompatProxyServer {
 
     private static void writeError(OutputStream output, int status, String message) throws IOException {
         String escaped = message == null ? "Request failed" : message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-        byte[] body = ("<!doctype html><meta charset=utf-8><title>Gimyai 相容模式</title>"
-                + "<body style='font:20px sans-serif;padding:32px'>Gimyai 相容代理暫時無法載入：" + escaped + "</body>")
+        byte[] body = ("<!doctype html><meta charset=utf-8><title>網站相容模式</title>"
+                + "<body style='font:20px sans-serif;padding:32px'>網站相容代理暫時無法載入：" + escaped + "</body>")
                 .getBytes(StandardCharsets.UTF_8);
         String reason = status == 400 ? "Bad Request" : status == 405 ? "Method Not Allowed" : "Bad Gateway";
         String headers = "HTTP/1.1 " + status + " " + reason + "\r\nContent-Type: text/html; charset=UTF-8\r\n"
