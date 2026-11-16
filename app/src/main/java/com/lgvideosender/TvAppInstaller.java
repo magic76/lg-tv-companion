@@ -519,11 +519,15 @@ final class TvAppInstaller {
         @Override public boolean promptYesNo(String message) {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean accepted = new AtomicBoolean(false);
+            boolean english = "en".equals(context.getSharedPreferences("lg_video_sender", Context.MODE_PRIVATE)
+                    .getString("ui_language", "zh"));
             MAIN.post(() -> new AlertDialog.Builder(context)
-                    .setTitle("確認電視 SSH 指紋")
-                    .setMessage("第一次連線會顯示電視 SSH 指紋。只有在你正在設定的電視旁操作時才接受。\n\n" + message)
-                    .setPositiveButton("信任並繼續", (dialog, which) -> { accepted.set(true); latch.countDown(); })
-                    .setNegativeButton("取消", (dialog, which) -> latch.countDown())
+                    .setTitle(english ? "Confirm TV SSH fingerprint" : "確認電視 SSH 指紋")
+                    .setMessage((english
+                            ? "The TV's SSH fingerprint is shown on the first connection. Accept it only while you are next to the TV you are setting up.\n\n"
+                            : "第一次連線會顯示電視 SSH 指紋。只有在你正在設定的電視旁操作時才接受。\n\n") + message)
+                    .setPositiveButton(english ? "Trust and continue" : "信任並繼續", (dialog, which) -> { accepted.set(true); latch.countDown(); })
+                    .setNegativeButton(english ? "Cancel" : "取消", (dialog, which) -> latch.countDown())
                     .setOnCancelListener(dialog -> latch.countDown())
                     .show());
             try { return latch.await(120, TimeUnit.SECONDS) && accepted.get(); }

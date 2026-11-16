@@ -12,11 +12,11 @@ LG TV Companion 由 Android 手機 companion 和 LG webOS 電視 App 組成，�
 | `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、手機控制及支援的影片串流播放 |
 | `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-目前版本：Android companion `1.4.46`、webOS TV App `1.4.18`。Android APK 已內附 TV App IPK，可從手機安裝到電視。
+目前版本：Android companion `1.4.47`、webOS TV App `1.4.18`。手機控制介面支援繁體中文與英文，可從頁面頂部切換；語言會保存在手機上。Android APK 已內附 TV App IPK，可從手機安裝到電視。
 
 ### 下載
 
-- [Android companion APK v1.4.46](releases/LGTVCompanion-Android-v1.4.46.apk) — 內含 webOS TV v1.4.18 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [Android companion APK v1.4.47](releases/LGTVCompanion-Android-v1.4.47.apk) — 內含 webOS TV v1.4.18 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
 - [LG webOS TV IPK v1.4.18](releases/com.example.hellotv_1.4.18_all.ipk)
 - [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 
@@ -31,6 +31,8 @@ LG TV Companion 由 Android 手機 companion 和 LG webOS 電視 App 組成，�
 電視 App 安裝使用 Developer Mode Key Server 取得 SSH 金鑰（連接埠 9991），再透過 SSH（連接埠 9922）傳送及安裝 IPK；這與手機控制頁的 QR 配對是不同連線，不需要先完成手機控制配對。安裝不會自動開啟 App 或切換電視畫面。
 
 ### 功能與限制
+
+- 手機 Companion 介面支援繁體中文與英文，可用頁面頂部的語言按鈕切換；選擇會儲存在手機。
 
 - 手機遙控器可切換方向鍵與觸控板分頁。方向鍵可移動焦點；觸控板中央拖曳移動游標，右側邊緣上下拖曳垂直捲動，底部邊緣左右拖曳水平捲動，雙指可同時上下左右捲動。也可輸入文字、調整電視音量、開啟網址、管理網站收藏，並在手機網頁中尋找影片來源投放到電視。首次使用音量鍵時，需在電視允許音量控制。
 - Android companion APK 內附 webOS TV IPK。安裝器會顯示電視回報的安裝進度；若兩分鐘內未取得完成回報，電視端仍可能在背景安裝，請先查看電視 App 清單再重試。
@@ -83,11 +85,11 @@ LG TV Companion consists of an Android phone companion and an LG webOS TV app. I
 | `webos-tv/app/` | LG webOS TV app: website and bookmark management, Gemini conversations, phone control, and supported video playback |
 | `releases/` | Android APKs, webOS IPKs, and SHA-256 checksums |
 
-Current versions: Android companion `1.4.46` and webOS TV app `1.4.18`. The Android APK bundles the TV app IPK so it can be installed from the phone.
+Current versions: Android companion `1.4.47` and webOS TV app `1.4.18`. The phone companion supports Traditional Chinese and English. Switch languages from the top of the page; the choice is saved on the phone. The Android APK bundles the TV app IPK so it can be installed from the phone.
 
 ### Downloads
 
-- [Android companion APK v1.4.46](releases/LGTVCompanion-Android-v1.4.46.apk) — includes webOS TV app v1.4.18; debug-signed for sideloading and not a Play Store release.
+- [Android companion APK v1.4.47](releases/LGTVCompanion-Android-v1.4.47.apk) — includes webOS TV app v1.4.18; debug-signed for sideloading and not a Play Store release.
 - [LG webOS TV app IPK v1.4.18](releases/com.example.hellotv_1.4.18_all.ipk)
 - [SHA-256 checksums](releases/SHA256SUMS.txt)
 
@@ -102,6 +104,8 @@ Current versions: Android companion `1.4.46` and webOS TV app `1.4.18`. The Andr
 TV app installation uses the Developer Mode Key Server to retrieve the SSH key (port 9991), then transfers and installs the IPK over SSH (port 9922). This is separate from QR pairing for phone control; phone control does not need to be paired first. Installation does not launch the app or switch the TV screen automatically.
 
 ### Features and limitations
+
+- The Android companion supports Traditional Chinese and English. Use the language button at the top of the page; your choice is saved on the phone.
 
 - The phone remote switches between directional-pad and touchpad tabs. The pad navigates TV focus; dragging its center moves the pointer, dragging the right edge scrolls vertically, and dragging the bottom edge scrolls horizontally. Two-finger gestures can scroll both axes. The phone also controls volume, enters text, opens URLs, manages website bookmarks, and finds video sources in the phone browser for TV playback. The first volume command requires permission on the TV.
 - The Android APK includes the webOS TV app IPK. The installer displays installation progress reported by the TV. If no completion response arrives within two minutes, the TV may still be installing in the background; check the TV's app list before retrying.

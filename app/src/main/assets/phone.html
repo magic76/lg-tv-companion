@@ -27,6 +27,7 @@
     h1 { margin: 0; font-size: 18px; }
     .header-copy { min-width: 0; flex: 1; }
     .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .language-button { display: grid; min-width: 38px; height: 38px; padding: 0 7px; place-items: center; border: 1px solid #3a4655; border-radius: 12px; color: #eaf0f6; background: #1a222d; font-size: 11px; font-weight: 800; }
     .settings-button { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #3a4655; border-radius: 13px; color: #eaf0f6; background: #1a222d; font-size: 20px; }
     .power-button { display: flex; min-width: 82px; height: 44px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; border: 0; border-radius: 999px; color: #fff; background: #e53935; box-shadow: 0 4px 13px #e5393540; font-size: 12px; font-weight: 800; -webkit-tap-highlight-color: transparent; }
     .power-button:active { background: #c62828; transform: scale(.96); }
@@ -210,6 +211,7 @@
         <h1>LG 電視 Companion</h1>
       </div>
       <div class="header-actions">
+        <button class="language-button" id="languageButton" type="button" aria-label="切換為英文" title="切換為英文">EN</button>
         <button class="settings-button" id="settingsButton" type="button" aria-label="設定與連線資訊" title="設定">⚙</button>
         <button class="power-button" id="tvPowerButton" type="button" aria-label="正在讀取電視狀態" title="正在讀取電視狀態">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10"/><path d="M6.2 5.4a8 8 0 1 0 11.6 0"/></svg>
@@ -452,6 +454,212 @@
   <script>
     (function () {
       'use strict';
+      var languageButton = document.getElementById('languageButton');
+      var uiLanguage = 'zh';
+      try { uiLanguage = window.localStorage.getItem('lgcompanion.uiLanguage.v1') === 'en' ? 'en' : 'zh'; } catch (error) {}
+      var englishText = {
+        'LG 電視手機控制': 'LG TV Companion', 'LG 電視 Companion': 'LG TV Companion',
+        '設定與連線資訊': 'Settings and connection info', '設定': 'Settings', '正在讀取電視狀態': 'Checking TV status',
+        '電源': 'Power', '關閉設定': 'Close settings', '電視連線、喚醒與 Gemini': 'TV connection, wake, and Gemini',
+        '電視連線': 'TV connection',
+        '優先掃描電視 App 的 QR code；同一個 Wi-Fi 下會自動連線。IP 只在 QR 無法使用時手動填寫。': 'Scan the QR code in the TV app first. Devices on the same Wi-Fi connect automatically. Enter the TV IP only if QR pairing is unavailable.',
+        '電視 IP 或主機名稱': 'TV IP address or hostname', '例如 192.168.0.32': 'e.g. 192.168.0.32', '儲存': 'Save', '掃描電視 QR': 'Scan TV QR code',
+        '右上角紅色電源鍵會先讀取電視狀態：電視開機時送出關機指令，待機或無法連線時送出 Wi-Fi 喚醒訊號。首次使用關機功能時，請在電視允許電源控制。喚醒需要電視已接電源，並開啟「一般 → Mobile TV On → Turn on via Wi-Fi」。': 'The red power button checks the TV state. It turns off a TV that is on, or sends a Wi-Fi wake signal when the TV is in standby or unreachable. Allow power control on the TV the first time you turn it off. Wake requires the TV to stay plugged in with General → Mobile TV On → Turn on via Wi-Fi enabled.',
+        'Wi-Fi 喚醒 MAC（QR 未提供時才需填）': 'Wi-Fi wake MAC address (only if missing from QR)', '安裝電視 App（.ipk）': 'Install TV app (.ipk)',
+        'Android app 已內附 webOS 電視套件，展開時會自動載入。選擇其他 .ipk 不會移除內附版本；之後可隨時切回。電視必須開啟 Developer Mode 的 Key Server，並輸入電視畫面上顯示的 passphrase。passphrase 只用於本次連線，不會儲存；請在可信任的 Wi-Fi 操作。安裝前會再次確認，完成後不會自動開啟 App 或切換電視畫面。': 'The Android app includes the webOS TV package and loads it when this section opens. Choosing another .ipk keeps the bundled package available. Enable Key Server in Developer Mode on the TV and enter the passphrase shown there. The passphrase is used for this connection only and is not saved. Use a trusted Wi-Fi network. You will review the installation before it starts; installation will not launch the TV app or change the TV screen.',
+        '選擇其他 .ipk 套件': 'Choose another .ipk package', '改用 app 內附版本': 'Use bundled package', 'Developer Mode passphrase': 'Developer Mode passphrase',
+        '輸入電視 Developer Mode 顯示的 passphrase': 'Enter the passphrase shown in TV Developer Mode', '安裝到電視': 'Install on TV',
+        '展開時會自動載入 app 內附套件。': 'The bundled package loads when this section opens.', '重設已信任的電視 SSH 指紋': 'Reset trusted TV SSH fingerprint',
+        'Gemini 金鑰': 'Gemini API key', '金鑰會傳到電視並保存在電視 App，手機不保存；傳送會取代電視目前的金鑰。傳輸未加密，請只在信任的 Wi‑Fi 使用。': 'The key is sent to and stored in the TV app; it is not saved on your phone. Sending a key replaces the one currently on the TV. Transfer is unencrypted, so use trusted Wi-Fi only.',
+        'Gemini API 金鑰': 'Gemini API key', '貼上 API 金鑰': 'Paste API key', '顯示': 'Show', '隱藏': 'Hide', '儲存到電視': 'Save to TV', '等待電視 App 連線…': 'Waiting for TV app…',
+        '進階連線資訊與排錯': 'Advanced connection info and troubleshooting', '一般使用不需要操作這些資料。只有自動連線失敗、需要手動排錯時才使用；手機和電視需在同一個 Wi‑Fi。': 'You do not need these details for normal use. Use them only to troubleshoot a failed automatic connection. The phone and TV must use the same Wi-Fi.',
+        '正在讀取本機網路位址…': 'Reading local network address…', '本次連線碼': 'Pairing code', '複製連線位址': 'Copy connection address',
+        '正在連線…': 'Connecting…', '電視 App 已連線': 'TV app connected', '準備配對電視': 'Ready to pair with TV', '電視 App 尚未連線': 'TV app is not connected',
+        '第一次使用：掃描電視 App 顯示的 QR code。': 'First time? Scan the QR code shown in the TV app.', '手機和電視需連上同一個 Wi-Fi。': 'Connect your phone and TV to the same Wi-Fi.',
+        '連線電視': 'Connect to TV', '電視控制功能': 'TV controls', '遙控器': 'Remote', '網站／影片': 'Websites / Video', 'AI 對話': 'AI chat',
+        '手機說或打，電視上的 Gemini 會回覆': 'Speak or type on your phone; Gemini on the TV replies', 'AI 對話紀錄': 'AI conversation',
+        '傳送訊息或開始語音後，對話會顯示在這裡。': 'Your conversation will appear here after you send a message or start voice chat.',
+        '要傳給電視 AI 的內容': 'Message for the TV AI', '例如：幫我開啟 Yahoo': 'e.g. Open Yahoo for me', '傳送訊息': 'Send message', '🎙 語音對話': '🎙 Voice chat', '等待連線…': 'Waiting for connection…',
+        '選一個常用網址，或貼上新的網址': 'Choose a favorite or paste a new URL', '最近使用': 'Recently opened', '開啟網站或尋找影片': 'Open a website or find a video',
+        '網址': 'URL', '貼上網址，例如 https://example.com': 'Paste a URL, e.g. https://example.com', '可貼上完整網址；留空並開啟會啟動電視 App。': 'Paste a full URL. Leave it blank and open to launch the TV app.',
+        '在電視開啟網站': 'Open website on TV', '在電視瀏覽器開啟完整網頁。': 'Open the full webpage in the TV browser.', '手機開網頁找影片': 'Browse for videos on phone',
+        '在 App 內播放影片網頁，偵測串流後選擇投放。': 'Browse the video page in the app, detect streams, then choose one to cast.', '快速解析公開影片來源': 'Quickly find public video streams',
+        '嘗試直接讀取網頁公開宣告的 MP4 或 HLS 連結，找到後立即交給電視。需要登入或 DRM 的頁面可能無法使用。': 'Look for publicly declared MP4 or HLS links and send a match to the TV. Pages that require sign-in or DRM may not work.',
+        '直接解析並投放': 'Find and cast directly', '＋ 新增網站到電視收藏': '＋ Add website to TV favorites', '儲存後會出現在電視 App 的網站收藏，也會加入這支手機的最近使用捷徑。': 'Saved sites appear in the TV app favorites and in this phone’s recent shortcuts.',
+        '網站名稱': 'Website name', '例如：我的新聞': 'e.g. My News', '網站網址': 'Website URL', '新增到電視': 'Add to TV',
+        '進入時自動連線・中斷後重試・不啟動電視 App': 'Connect on entry · retry after disconnect · does not launch the TV app', '連線遙控器': 'Connect remote',
+        '已配對的電視會在進入遙控頁時自動連線。': 'The paired TV connects automatically when you open the Remote tab.', '電視音量控制': 'TV volume control',
+        '降低電視音量': 'Turn TV volume down', '提高電視音量': 'Turn TV volume up', '音量': 'Volume', '第一次使用時，若電視出現音量控制授權提示，請按允許。': 'If the TV asks for volume-control permission, select Allow.',
+        '遙控方式': 'Remote control mode', '方向鍵': 'D-pad', '觸控板': 'Touchpad', '移動電視焦點': 'Move TV focus', '電視方向鍵與選取': 'TV directional pad and select',
+        '上': 'Up', '左': 'Left', '選取': 'Select', '右': 'Right', '下': 'Down',
+        '電視觸控板：中央拖曳移動游標，右側邊緣上下拖曳捲動，底部邊緣左右拖曳捲動，點按選取': 'TV touchpad: drag in the center to move the pointer, drag along the right edge to scroll vertically, drag along the bottom edge to scroll horizontally, and tap to select',
+        '中央拖曳移動游標・右側上下捲動・底部左右捲動': 'Drag center to move · right edge scrolls vertically · bottom edge scrolls horizontally', '電視基本按鍵': 'TV controls', '返回': 'Back', '首頁': 'Home',
+        '手機打字到電視': 'Type on TV from phone', '先用觸控板選取電視上的文字欄位，再於手機輸入。': 'Use the touchpad to select a text field on the TV, then type here.',
+        '要輸入到電視的文字': 'Text to send to TV', '在這裡輸入文字': 'Type here', '傳送文字': 'Send text', 'Enter': 'Enter',
+        '請先連線觸控板，並讓電視上的文字欄位取得焦點。': 'Connect the touchpad and focus a text field on the TV first.', '請先連線觸控板。': 'Connect the touchpad first.', '請先輸入文字。': 'Enter some text first.',
+        '請先掃描電視 QR code 或設定電視 IP。': 'Scan the TV QR code or enter the TV IP first.', '請更新並重新開啟 Companion App 後再試。': 'Update and reopen the Companion app, then try again.',
+        '正在調高音量…若電視出現授權提示，請按允許。': 'Turning up volume… Allow it if the TV asks for permission.', '正在調低音量…若電視出現授權提示，請按允許。': 'Turning down volume… Allow it if the TV asks for permission.',
+        '已連線': 'Connected', '連線中…': 'Connecting…', '尚未配對': 'Not paired', '重新連線': 'Reconnect', '正在安裝…': 'Installing…',
+        '完成語音並送出': 'Finish and send voice', 'Gemini 回覆中…': 'Gemini is responding…', '此瀏覽器不支援直接語音': 'This browser does not support live voice', '等待手機服務': 'Waiting for phone service',
+        '先連線電視即可使用語音': 'Connect to the TV to use voice chat', '🎙 開始直接語音': '🎙 Start live voice', '請貼上有效的 Gemini API 金鑰。': 'Paste a valid Gemini API key.',
+        '請先連線電視，再傳送金鑰。': 'Connect to the TV before sending the key.', '電視沒有確認保存；請重新輸入金鑰再試。': 'The TV did not confirm saving the key. Enter it again and retry.',
+        '金鑰已送出，等待電視保存…': 'Key sent. Waiting for the TV to save it…', '傳送失敗；請確認電視已連線後重試。': 'Could not send. Make sure the TV is connected and try again.',
+        '手機服務尚未連線，請稍候再試。': 'Phone service is not connected yet. Try again shortly.', '請輸入有效的 http 或 https 網址，或留空只開啟 App。': 'Enter a valid HTTP or HTTPS URL, or leave it blank to open the app only.',
+        '正在電視開啟網站…': 'Opening website on TV…', '正在啟動電視 App…': 'Launching the TV app…', '已在電視開啟網站。': 'Website opened on TV.', '已要求電視啟動 App。': 'TV app launch requested.',
+        '啟動失敗；請確認電視已開機並允許手機控制。': 'Could not launch. Make sure the TV is on and phone control is allowed.', '無法呼叫相機；請確認 Companion App 的相機權限。': 'Could not open the camera. Check the Companion app camera permission.',
+        '請把電視停在「手機控制連線」QR code 畫面，接著用手機掃描。': 'Show the “Phone control connection” QR code on the TV, then scan it with your phone.', '已讀取電視 QR，正在連線…': 'TV QR code scanned. Connecting…',
+        '掃描或連線失敗，請重試。': 'Scan or connection failed. Try again.', '無法開啟 QR 掃描器。': 'Could not open the QR scanner.', '正在連線電視…': 'Connecting to TV…', '已要求連線電視。': 'TV connection requested.',
+        ' 等待電視回應…': ' Waiting for TV response…', '連線電視失敗，請確認電視已開機並允許手機控制。': 'Could not connect to TV. Make sure the TV is on and phone control is allowed.',
+        '請輸入有效的 http 或 https 網址。': 'Enter a valid HTTP or HTTPS URL.', '手機影片瀏覽器尚未準備好，請重新開啟 App。': 'The phone video browser is not ready. Reopen the app.',
+        '正在手機開啟影片網頁…': 'Opening video page on phone…', '已開啟影片來源偵測。': 'Video source finder opened.', '無法開啟影片來源偵測。': 'Could not open the video source finder.',
+        '電視電源狀態未知': 'TV power state unknown', '電視電源狀態未知；點擊後會自動判斷': 'TV power state unknown. Tap to check.', '關機': 'Turn off', '開機': 'Wake', '關閉電視': 'Turn off TV', '喚醒電視': 'Wake TV',
+        '電視已開機，點擊關機': 'TV is on. Tap to turn it off.', '電視待機，點擊喚醒': 'TV is in standby. Tap to wake it.', '請重新開啟 Companion App 後重試。': 'Reopen the Companion app and try again.',
+        '正在確認電視狀態…': 'Checking TV status…', '電視電源操作失敗。': 'TV power action failed.', '正在儲存…': 'Saving…', '操作失敗，請重試。': 'Action failed. Try again.',
+        '請輸入有效的 http 或 https 網頁或影片網址。': 'Enter a valid HTTP or HTTPS webpage or video URL.', '手機正在檢查網頁公開的影片來源…': 'Checking the webpage for public video streams…',
+        '已把影片交給電視 App。': 'Video sent to the TV app.', '解析影片失敗；你仍可使用「在電視開啟網頁」。': 'Could not find a video stream. You can still open the webpage on the TV.',
+        '請從 LG 電視影片傳送 App 開啟這個控制頁。': 'Open this control page from the LG TV Companion app.', '電視啟動失敗。': 'Could not launch the TV app.',
+        '請更新並重新開啟 Companion App 後再試。': 'Update and reopen the Companion app, then try again.', '正在連線電視觸控板…': 'Connecting to TV touchpad…',
+        '請從 LG 電視 companion App 開啟控制頁。': 'Open the control page from the LG TV Companion app.', '已配對的電視會在進入遙控頁時自動連線。': 'The paired TV connects automatically when you open the Remote tab.',
+        '正在送出 Enter…': 'Sending Enter…', '正在傳送文字…': 'Sending text…', '已送到電視。': 'Sent to TV.', '電視文字輸入失敗。': 'Could not send text to TV.',
+        '電視音量已調整。': 'TV volume changed.', '電視音量控制失敗。': 'Could not change TV volume.', '觸控板已連線。': 'Touchpad connected.', '觸控板尚未連線。': 'Touchpad is not connected.',
+        '請先輸入文字，或按語音按鈕說話。': 'Type a message or tap the voice button.', '電視尚未連線，訊息沒有送出。': 'The TV is not connected. Message was not sent.',
+        '訊息沒有送出，請確認連線後重試。': 'Message was not sent. Check the connection and try again.', '訊息已送出，等待電視確認…': 'Message sent. Waiting for TV confirmation…',
+        '你': 'You', '電視 AI': 'TV AI', '開啟過的網站會收在這裡，方便下次快速回去。': 'Recently opened websites appear here for quick access.',
+        '只有按「儲存到電視」才會傳送金鑰。': 'The key is sent only when you tap Save to TV.', '先連線電視，再傳送金鑰。': 'Connect to the TV before sending the key.', '等待手機服務…': 'Waiting for phone service…', '未知錯誤': 'Unknown error',
+        '請輸入 1 到 40 個字的網站名稱。': 'Enter a website name between 1 and 40 characters.', '電視 App 尚未連線，網站沒有送出。': 'TV app is not connected. Website was not sent.',
+        '電視沒有回應；請確認電視 App 仍在執行後重試。': 'The TV did not respond. Make sure the TV app is running and try again.', '已送出，等待電視儲存…': 'Sent. Waiting for the TV to save it…', '傳送失敗，請重試。': 'Could not send. Try again.',
+        '音訊傳送中斷，請重新開始。': 'Audio stream interrupted. Start again.', '音訊傳送失敗，請重新開始。': 'Audio stream failed. Start again.', '手機麥克風連線中斷，語音已停止。請重新開始。': 'Phone microphone disconnected. Voice chat stopped; start again.',
+        '語音已送出，等待 Gemini 回覆…': 'Voice sent. Waiting for Gemini…', '麥克風暫時無法啟動，正在重新嘗試…': 'Could not start the microphone. Retrying…', '正在啟動手機麥克風…': 'Starting phone microphone…',
+        '手機控制頁已離開前景，麥克風已停止。': 'Phone control moved to the background. Microphone stopped.', '無法讀取手機麥克風音訊，請重試。': 'Could not read phone microphone audio. Try again.',
+        '等待電視上的 Gemini Live 準備好…': 'Waiting for Gemini Live on TV…', '無法連接電視，請重新開始。': 'Could not connect to TV. Start again.', '電視沒有回應，請確認 Gemini API 金鑰和網路。': 'The TV did not respond. Check the Gemini API key and network connection.',
+        'Android 或 WebView 拒絕了麥克風存取（NotAllowedError）；請確認 App 的麥克風權限和手機的麥克風隱私開關。': 'Android or WebView denied microphone access (NotAllowedError). Check the app permission and Android microphone privacy toggle.',
+        '麥克風仍無法啟動（NotReadableError）。請確認 Android 麥克風存取已開啟，關閉通話、錄音、相機或語音助理，再重新開啟手機控制頁。': 'Microphone could not start (NotReadableError). Make sure Android microphone access is enabled, close calls, recording, camera, or voice assistant apps, then reopen phone control.',
+        '手機麥克風不支援要求的錄音格式（OverconstrainedError）；請更新 Android System WebView 後重試。': 'The phone microphone does not support the requested format (OverconstrainedError). Update Android System WebView and try again.',
+        '手機 App 進入背景，觸控板已暫停；回到遙控器頁會自動重連。': 'App is in the background. Touchpad paused; it will reconnect when you return to Remote.', '手機控制頁已關閉，麥克風已停止。': 'Phone control closed. Microphone stopped.',
+        '控制頁已關閉，觸控板連線已停止。': 'Control page closed. Touchpad disconnected.', '無法連上手機服務；請重新開啟控制頁。': 'Could not connect to phone service. Reopen the control page.',
+        '手機已就緒；第一次使用請按上方「掃描電視 QR」。': 'Phone is ready. First, tap Scan TV QR above.', '手機已就緒；按上方「連線電視」即可開始。': 'Phone is ready. Tap Connect to TV above to begin.',
+        '電視連線中斷，語音已停止。': 'TV disconnected. Voice chat stopped.', '電視已連線，可以送出訊息。': 'TV connected. You can send messages.', '電視連線中斷，按上方「連線電視」重新連線。': 'TV disconnected. Tap Connect to TV above to reconnect.',
+        '金鑰已保存在電視 App。': 'Key saved in the TV app.', '電視沒有接受這組金鑰。': 'TV did not accept this key.', '網站已加入電視清單。': 'Website added to the TV list.', '電視沒有接受這個網站。': 'TV did not accept this website.',
+        '電視已收到。': 'TV received your message.', '電視沒有接受這則訊息。': 'TV did not accept this message.', '（沒有文字回覆）': '(No text response)',
+        '正在直接傳送手機音訊；說完後按「完成語音並送出」。': 'Streaming phone audio. When you are done speaking, tap Finish and send voice.', '電視無法開始語音輸入。': 'TV could not start voice input.',
+        'Gemini 回覆完成，可以繼續說話。': 'Gemini finished replying. You can keep talking.', '連線失敗；請確認 Companion App 已開啟。': 'Connection failed. Make sure the Companion app is open.',
+        '連線中斷，正在重試…': 'Connection lost. Retrying…', '找不到 Wi-Fi 位址；請確認手機已連上 Wi-Fi。': 'No Wi-Fi address found. Make sure the phone is connected to Wi-Fi.', '已儲存。': 'Saved.',
+        '電視電源指令已送出。': 'TV power command sent.', '沒有更換套件，目前選擇仍保留。': 'Package unchanged. Current selection was kept.', '無法讀取這個 .ipk 套件。': 'Could not read this .ipk package.',
+        '未提供版本號': 'Version not provided', '來源：app 內附版本': 'Source: bundled package', '來源：選擇的 .ipk': 'Source: selected .ipk', '套件已準備好。': 'Package is ready.',
+        '正在讀取套件…': 'Reading package…', '安裝完成。': 'Installation complete.', '安裝失敗。': 'Installation failed.', '已重設電視 SSH 指紋。': 'TV SSH fingerprint reset.', '無法重設 SSH 指紋。': 'Could not reset SSH fingerprint.',
+        '無法讀取手機連線資料。': 'Could not read phone connection details.', '請更新並重新開啟 LG 電視 companion APK。': 'Update and reopen the LG TV Companion APK.', '請在 LG 電視 companion APK 內開啟控制頁。': 'Open the control page in the LG TV Companion APK.',
+        '已離開遙控器頁，觸控板連線已暫停。': 'Remote tab closed. Touchpad connection paused.', '連線位址已複製。': 'Connection address copied.', '請更新並重新開啟 LG 電視 Companion App。': 'Update and reopen the LG TV Companion app.',
+        '請從 LG 電視 Companion App 開啟這個控制頁。': 'Open this control page from the LG TV Companion app.', '無法重設電視 SSH 指紋。': 'Could not reset the TV SSH fingerprint.', '無法開始安裝：': 'Could not start installation: ',
+        '正在載入 app 內附的電視 App…': 'Loading bundled TV app…', '無法載入 app 內附的電視 App。': 'Could not load the bundled TV app.', '請選擇電視 App 的 .ipk 套件。': 'Select a TV app .ipk package.',
+        '無法開啟檔案選擇器。': 'Could not open the file picker.', '請先選擇套件並設定電視 IP。': 'Select a package and configure the TV IP first.', '請輸入電視 Developer Mode 顯示的 passphrase。': 'Enter the passphrase shown in TV Developer Mode.',
+        '等待確認安裝…': 'Waiting for installation confirmation…', '這個瀏覽器不支援直接音訊輸入，仍可用文字傳送。': 'This browser does not support live audio input. You can still send text.'
+      };
+      var chineseText = {};
+      Object.keys(englishText).forEach(function (key) { chineseText[englishText[key]] = key; });
+      function translateUiValue(value, language) {
+        var raw = String(value || ''), trimmed = raw.trim(), converted = null;
+        if (!trimmed) return raw;
+        var source = language === 'en' ? englishText : chineseText;
+        if (Object.prototype.hasOwnProperty.call(source, trimmed)) converted = source[trimmed];
+        if (converted === null && language === 'en') {
+          var match = trimmed.match(/^已開啟 · (.+)$/); if (match) converted = 'Opened · ' + match[1];
+          match = trimmed.match(/^影片來源 · (\d+)$/); if (match) converted = 'Video sources · ' + match[1];
+          match = trimmed.match(/^觸控板中斷，(.+) 秒後自動重連…$/); if (match) converted = 'Touchpad disconnected. Reconnecting in ' + match[1] + ' seconds…';
+          match = trimmed.match(/^觸控板連線呼叫失敗：(.*)$/); if (match) converted = 'Touchpad connection failed: ' + match[1];
+          match = trimmed.match(/^音量控制呼叫失敗：(.*)$/); if (match) converted = 'Volume control failed: ' + match[1];
+          match = trimmed.match(/^文字輸入呼叫失敗：(.*)$/); if (match) converted = 'Text input failed: ' + match[1];
+          match = trimmed.match(/^無法開啟手機麥克風（(.*)），請稍後重試。$/); if (match) converted = 'Could not start phone microphone (' + match[1] + '). Try again shortly.';
+          match = trimmed.match(/^在電視開啟 (.*)$/); if (match) converted = 'Open ' + match[1] + ' on TV';
+          match = trimmed.match(/^移除 (.*) 的手機捷徑$/); if (match) converted = 'Remove phone shortcut for ' + match[1];
+          match = trimmed.match(/^已選取「(.*)」；連線電視後即可開啟。$/); if (match) converted = 'Selected “' + match[1] + '”. Connect to the TV to open it.';
+          match = trimmed.match(/^已開啟 · (.+)$/); if (match) converted = 'Opened · ' + match[1];
+          match = trimmed.match(/^App ID：(.*)$/); if (match) converted = 'App ID: ' + match[1];
+          match = trimmed.match(/^版本：(.*)$/); if (match) converted = 'Version: ' + match[1];
+          match = trimmed.match(/^來源：(.*)$/); if (match) converted = 'Source: ' + match[1];
+          match = trimmed.match(/^已開啟：(.+)$/); if (match) converted = 'Opened: ' + match[1];
+        } else if (converted === null && language === 'zh') {
+          var matchEn = trimmed.match(/^Opened · (.+)$/); if (matchEn) converted = '已開啟 · ' + matchEn[1];
+          matchEn = trimmed.match(/^Video sources · (\d+)$/); if (matchEn) converted = '影片來源 · ' + matchEn[1];
+          matchEn = trimmed.match(/^Touchpad disconnected\. Reconnecting in (.+) seconds…$/); if (matchEn) converted = '觸控板中斷，' + matchEn[1] + ' 秒後自動重連…';
+          matchEn = trimmed.match(/^Touchpad connection failed: (.*)$/); if (matchEn) converted = '觸控板連線呼叫失敗：' + matchEn[1];
+          matchEn = trimmed.match(/^Volume control failed: (.*)$/); if (matchEn) converted = '音量控制呼叫失敗：' + matchEn[1];
+          matchEn = trimmed.match(/^Text input failed: (.*)$/); if (matchEn) converted = '文字輸入呼叫失敗：' + matchEn[1];
+          matchEn = trimmed.match(/^Could not start phone microphone \((.*)\)\. Try again shortly\.$/); if (matchEn) converted = '無法開啟手機麥克風（' + matchEn[1] + '），請稍後重試。';
+          matchEn = trimmed.match(/^Open (.*) on TV$/); if (matchEn) converted = '在電視開啟 ' + matchEn[1];
+          matchEn = trimmed.match(/^Remove phone shortcut for (.*)$/); if (matchEn) converted = '移除 ' + matchEn[1] + ' 的手機捷徑';
+          matchEn = trimmed.match(/^Selected “(.*)”\. Connect to the TV to open it\.$/); if (matchEn) converted = '已選取「' + matchEn[1] + '」；連線電視後即可開啟。';
+          matchEn = trimmed.match(/^App ID: (.*)$/); if (matchEn) converted = 'App ID：' + matchEn[1];
+          matchEn = trimmed.match(/^Version: (.*)$/); if (matchEn) converted = '版本：' + matchEn[1];
+          matchEn = trimmed.match(/^Source: (.*)$/); if (matchEn) converted = '來源：' + matchEn[1];
+          matchEn = trimmed.match(/^Opened: (.+)$/); if (matchEn) converted = '已開啟：' + matchEn[1];
+        }
+        if (converted === null) return raw;
+        var start = raw.match(/^\s*/)[0], end = raw.match(/\s*$/)[0];
+        return start + converted + end;
+      }
+      function shouldSkipLanguageNode(node) {
+        var parent = node && node.parentElement;
+        return !parent || !!parent.closest('script,style,code,.reply,.site-name,.site-host,input,textarea,select,[contenteditable="true"]');
+      }
+      function translateVisibleText(root, language) {
+        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), node;
+        while ((node = walker.nextNode())) {
+          if (shouldSkipLanguageNode(node)) continue;
+          var next = translateUiValue(node.nodeValue, language);
+          if (next !== node.nodeValue) node.nodeValue = next;
+        }
+        var elements = root.querySelectorAll('*');
+        for (var i = 0; i < elements.length; i++) {
+          ['title', 'placeholder', 'aria-label'].forEach(function (attribute) {
+            if (!elements[i].hasAttribute(attribute)) return;
+            var oldValue = elements[i].getAttribute(attribute);
+            var newValue = translateUiValue(oldValue, language);
+            if (newValue !== oldValue) elements[i].setAttribute(attribute, newValue);
+          });
+        }
+      }
+      function setUiLanguage(language) {
+        uiLanguage = language === 'en' ? 'en' : 'zh';
+        try { window.localStorage.setItem('lgcompanion.uiLanguage.v1', uiLanguage); } catch (error) {}
+        document.documentElement.lang = uiLanguage === 'en' ? 'en' : 'zh-Hant';
+        document.title = translateUiValue('LG 電視手機控制', uiLanguage);
+        translateVisibleText(document.body, uiLanguage);
+        languageButton.textContent = uiLanguage === 'en' ? '中文' : 'EN';
+        languageButton.setAttribute('aria-label', uiLanguage === 'en' ? 'Switch to Traditional Chinese' : '切換為英文');
+        languageButton.title = uiLanguage === 'en' ? 'Switch to Traditional Chinese' : '切換為英文';
+        if (window.AndroidBridge && typeof window.AndroidBridge.setUiLanguage === 'function') {
+          try { window.AndroidBridge.setUiLanguage(uiLanguage); } catch (error) {}
+        }
+      }
+      setUiLanguage(uiLanguage);
+      languageButton.addEventListener('click', function () { setUiLanguage(uiLanguage === 'en' ? 'zh' : 'en'); });
+      if (window.MutationObserver) {
+        new MutationObserver(function (records) {
+          records.forEach(function (record) {
+            if (record.type === 'characterData') {
+              if (!shouldSkipLanguageNode(record.target)) {
+                var nextText = translateUiValue(record.target.nodeValue, uiLanguage);
+                if (nextText !== record.target.nodeValue) record.target.nodeValue = nextText;
+              }
+            } else if (record.type === 'childList') {
+              record.addedNodes.forEach(function (added) {
+                if (added.nodeType === Node.TEXT_NODE) {
+                  if (!shouldSkipLanguageNode(added)) {
+                    var nextText = translateUiValue(added.nodeValue, uiLanguage);
+                    if (nextText !== added.nodeValue) added.nodeValue = nextText;
+                  }
+                } else if (added.nodeType === Node.ELEMENT_NODE && !added.matches('script,style,code,.reply,.site-name,.site-host')) {
+                  translateVisibleText(added, uiLanguage);
+                }
+              });
+            } else if (record.type === 'attributes' && record.target !== languageButton) {
+              var attributeValue = record.target.getAttribute(record.attributeName);
+              var translated = translateUiValue(attributeValue, uiLanguage);
+              if (translated !== attributeValue) record.target.setAttribute(record.attributeName, translated);
+            }
+          });
+        }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['title', 'placeholder', 'aria-label'] });
+      }
       var config = null;
       var socket = null;
       var tvOnline = false;
@@ -1318,8 +1526,10 @@
           open.className = 'recent-site-open';
           open.setAttribute('aria-label', '在電視開啟 ' + site.name);
           var name = document.createElement('strong');
+          name.className = 'site-name';
           name.textContent = site.name;
           var host = document.createElement('span');
+          host.className = 'site-host';
           try { host.textContent = new URL(site.url).hostname.replace(/^www\./, ''); }
           catch (error) { host.textContent = site.url; }
           open.appendChild(name);

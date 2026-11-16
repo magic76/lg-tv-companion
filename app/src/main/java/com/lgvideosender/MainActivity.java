@@ -90,6 +90,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
@@ -119,6 +120,7 @@ public final class MainActivity extends Activity {
     private final Set<String> mediaUrls = new LinkedHashSet<>();
     private final Map<String, Map<String, String>> candidateHeaders = new HashMap<>();
     private final Map<String, TextView> candidateMetadataViews = new HashMap<>();
+    private final Map<TextView, String> nativeUiTextViews = new WeakHashMap<>();
     private int candidateGeneration;
     private String pairCode;
     private PhoneBridgeServer bridgeServer;
@@ -235,7 +237,7 @@ public final class MainActivity extends Activity {
         LinearLayout browserHeader = new LinearLayout(this);
         browserHeader.setGravity(Gravity.CENTER_VERTICAL);
         Button backButton = new Button(this);
-        backButton.setText("‹ 返回控制");
+        setNativeUiText(backButton, "‹ 返回控制");
         backButton.setAllCaps(false);
         backButton.setTextColor(TEXT);
         backButton.setBackground(makeRoundedDrawable(PANEL, dp(14), 0));
@@ -243,7 +245,7 @@ public final class MainActivity extends Activity {
         browserHeader.addView(backButton, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
         TextView browserTitle = new TextView(this);
-        browserTitle.setText("網頁找影片");
+        setNativeUiText(browserTitle, "網頁找影片");
         browserTitle.setTextColor(TEXT);
         browserTitle.setTextSize(17);
         browserTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -253,7 +255,7 @@ public final class MainActivity extends Activity {
         browserContent.addView(browserHeader, matchWrap());
 
         pageStatus = new TextView(this);
-        pageStatus.setText("準備開啟網頁…");
+        setNativeUiText(pageStatus, "準備開啟網頁…");
         pageStatus.setTextColor(MUTED);
         pageStatus.setTextSize(12);
         pageStatus.setSingleLine(true);
@@ -262,7 +264,7 @@ public final class MainActivity extends Activity {
         browserContent.addView(pageStatus, matchWrap());
 
         playbackInfo = new TextView(this);
-        playbackInfo.setText("在網頁播放器按播放，自動偵測影片來源");
+        setNativeUiText(playbackInfo, "在網頁播放器按播放，自動偵測影片來源");
         playbackInfo.setTextColor(MUTED);
         playbackInfo.setTextSize(11);
         playbackInfo.setSingleLine(true);
@@ -289,13 +291,13 @@ public final class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (isPyppoUrl(url)) {
-                    pageStatus.setText("已略過廣告跳轉，仍停留在原頁面");
+                    setNativeUiText(pageStatus, "已略過廣告跳轉，仍停留在原頁面");
                     return true;
                 }
                 if (!isIntentUrl(url)) return false;
                 String fallback = resolveIntentFallback(url);
                 if (fallback == null) {
-                    pageStatus.setText("這個連結沒有可開啟的網頁備用網址");
+                    setNativeUiText(pageStatus, "這個連結沒有可開啟的網頁備用網址");
                 } else {
                     loadPage(fallback);
                 }
@@ -313,7 +315,7 @@ public final class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                pageStatus.setText("已開啟 · " + readableHost(url));
+                setNativeUiText(pageStatus, "已開啟 · " + readableHost(url));
                 pageLoaded = true;
                 mainHandler.removeCallbacks(playbackInfoPoller);
                 mainHandler.post(playbackInfoPoller);
@@ -322,8 +324,8 @@ public final class MainActivity extends Activity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    pageStatus.setText("網頁載入失敗 · " + error.getDescription());
-                    playbackInfo.setText("請確認網路後重新載入網頁");
+                    setNativeUiText(pageStatus, "網頁載入失敗 · " + error.getDescription());
+                    setNativeUiText(playbackInfo, "請確認網路後重新載入網頁");
                 }
             }
         });
@@ -398,7 +400,7 @@ public final class MainActivity extends Activity {
         LinearLayout heading = new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         candidateTitle = new TextView(this);
-        candidateTitle.setText("影片來源 · 0");
+        setNativeUiText(candidateTitle, "影片來源 · 0");
         candidateTitle.setTextColor(TEXT);
         candidateTitle.setTextSize(15);
         candidateTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -416,7 +418,7 @@ public final class MainActivity extends Activity {
         installSheetGesture(heading);
 
         candidateHint = new TextView(this);
-        candidateHint.setText("請在網頁播放器按播放，自動偵測影片來源");
+        setNativeUiText(candidateHint, "請在網頁播放器按播放，自動偵測影片來源");
         candidateHint.setTextColor(MUTED);
         candidateHint.setTextSize(12);
         candidateHint.setSingleLine(true);
@@ -430,7 +432,7 @@ public final class MainActivity extends Activity {
         candidateEmptyPanel.setPadding(dp(12), dp(8), dp(12), dp(8));
         candidateEmptyPanel.setBackground(makeRoundedDrawable(Color.rgb(21, 31, 41), dp(14), 0));
         emptyCandidates = new TextView(this);
-        emptyCandidates.setText("在網頁播放器按播放，手機會自動尋找影片來源。\n有些網站採用 DRM、blob 串流或登入驗證，可能無法直接偵測。");
+        setNativeUiText(emptyCandidates, "在網頁播放器按播放，手機會自動尋找影片來源。\n有些網站採用 DRM、blob 串流或登入驗證，可能無法直接偵測。");
         emptyCandidates.setTextColor(MUTED);
         emptyCandidates.setTextSize(12);
         emptyCandidates.setLineSpacing(dp(3), 1f);
@@ -459,7 +461,7 @@ public final class MainActivity extends Activity {
         candidateScroll.setVisibility(View.GONE);
 
         sendSelectedButton = new TextView(this);
-        sendSelectedButton.setText("投放到電視");
+        setNativeUiText(sendSelectedButton, "投放到電視");
         sendSelectedButton.setTextColor(Color.rgb(12, 33, 34));
         sendSelectedButton.setTextSize(15);
         sendSelectedButton.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -495,7 +497,7 @@ public final class MainActivity extends Activity {
 
     private TextView sheetAction(String label, Runnable action) {
         TextView button = new TextView(this);
-        button.setText(label);
+        setNativeUiText(button, label);
         button.setTextColor(TEXT);
         button.setTextSize(12);
         button.setGravity(Gravity.CENTER);
@@ -531,12 +533,12 @@ public final class MainActivity extends Activity {
         int count;
         synchronized (mediaUrls) { count = mediaUrls.size(); }
         boolean hasCandidates = count > 0;
-        candidateTitle.setText("影片來源 · " + count);
+        setNativeUiText(candidateTitle, "影片來源 · " + count);
         clearCandidatesButton.setVisibility(hasCandidates ? View.VISIBLE : View.GONE);
         undoCandidatesButton.setVisibility(clearedMediaUrls.isEmpty() ? View.GONE : View.VISIBLE);
         candidateToggle.setText(candidateSheetExpanded ? "⌄" : "⌃");
-        candidateToggle.setContentDescription(candidateSheetExpanded ? "收合影片來源清單" : "展開影片來源清單");
-        candidateHint.setText(hasCandidates ? selectedCandidateHint()
+        candidateToggle.setContentDescription(uiText(candidateSheetExpanded ? "收合影片來源清單" : "展開影片來源清單"));
+        setNativeUiText(candidateHint, hasCandidates ? selectedCandidateHint()
                 : (clearedMediaUrls.isEmpty() ? "請在網頁播放器按播放，自動偵測影片來源"
                 : "來源清單已清空，可按「復原」還原"));
         candidateScroll.setVisibility(candidateSheetExpanded && hasCandidates ? View.VISIBLE : View.GONE);
@@ -573,7 +575,7 @@ public final class MainActivity extends Activity {
     private void reloadCurrentPage() {
         String current = webView == null ? null : webView.getUrl();
         if (TextUtils.isEmpty(current) || !(current.startsWith("http://") || current.startsWith("https://"))) {
-            pageStatus.setText("目前頁面沒有可重新載入的網址");
+            setNativeUiText(pageStatus, "目前頁面沒有可重新載入的網址");
             return;
         }
         loadPage(current);
@@ -583,7 +585,7 @@ public final class MainActivity extends Activity {
         if ("about:blank".equalsIgnoreCase(url)) return false;
         if (isPyppoUrl(url)) {
             disposeMediaPopup(popup);
-            if (pageStatus != null) pageStatus.setText("已略過播放器的廣告跳轉，保留目前頁面。");
+            if (pageStatus != null) setNativeUiText(pageStatus, "已略過播放器的廣告跳轉，保留目前頁面。");
             return true;
         }
         String normalized = normalizeHttpUrl(url, 8192);
@@ -591,7 +593,7 @@ public final class MainActivity extends Activity {
         if (normalized == null) {
             disposeMediaPopup(popup);
             if (pageStatus != null) {
-                pageStatus.setText(isIntentUrl(url)
+                setNativeUiText(pageStatus, isIntentUrl(url)
                         ? "這個 intent:// 連結沒有可用的 http 或 https 備用網址。"
                         : "這個連結不是 http 或 https 網址，影片偵測頁無法開啟。");
             }
@@ -681,6 +683,152 @@ public final class MainActivity extends Activity {
 
     private SharedPreferences tvPreferences() {
         return getSharedPreferences("lg_video_sender", MODE_PRIVATE);
+    }
+
+    private boolean isEnglishUi() {
+        return "en".equals(tvPreferences().getString("ui_language", "zh"));
+    }
+
+    private String uiText(String chinese) {
+        if (!isEnglishUi()) return chinese;
+        if (chinese.startsWith("已開啟 · ")) return "Opened · " + chinese.substring("已開啟 · ".length());
+        if (chinese.startsWith("影片來源 · ")) return "Video sources · " + chinese.substring("影片來源 · ".length());
+        if (chinese.startsWith("網頁載入失敗 · ")) return "Page failed to load · " + chinese.substring("網頁載入失敗 · ".length());
+        if (chinese.startsWith("已開啟 ") && chinese.contains(" · 找到 ")) {
+            String[] parts = chinese.split(" · 找到 ", 2);
+            String count = parts[1].replace(" 個來源", "");
+            return "Opened " + parts[0].substring("已開啟 ".length()) + " · Found " + count
+                    + ("1".equals(count) ? " source" : " sources");
+        }
+        if (chinese.startsWith("長度：")) return chinese.replace("長度：", "Duration: ").replace("　畫面：", "   Video: ");
+        if (chinese.startsWith("來源網站 · ")) return "Source site · " + chinese.substring("來源網站 · ".length());
+        if (chinese.startsWith("已選取 · ")) {
+            String selected = chinese.substring("已選取 · ".length());
+            int separator = selected.lastIndexOf(" · ");
+            return separator > 0 ? "Selected · " + uiText(selected.substring(0, separator)) + " · " + uiText(selected.substring(separator + 3))
+                    : "Selected · " + uiText(selected);
+        }
+        if (chinese.startsWith("HLS／m3u8 · 網址標示 ")) return "HLS/m3u8 · URL indicates " + chinese.substring("HLS／m3u8 · 網址標示 ".length());
+        if (chinese.contains(" · 網址標示 ")) return chinese.substring(0, chinese.indexOf(" · 網址標示 "))
+                + " · URL indicates " + chinese.substring(chinese.indexOf(" · 網址標示 ") + " · 網址標示 ".length());
+        if (chinese.endsWith(" · 畫質未標示")) return chinese.substring(0, chinese.length() - " · 畫質未標示".length()) + " · Quality not specified";
+        if (chinese.startsWith("已開啟：")) return "Opened: " + chinese.substring("已開啟：".length());
+        if (chinese.startsWith("App ID：")) return "App ID: " + chinese.substring("App ID：".length());
+        if (chinese.startsWith("版本：")) return "Version: " + chinese.substring("版本：".length());
+        if (chinese.startsWith("來源：")) return "Source: " + chinese.substring("來源：".length());
+        if (chinese.startsWith("投放失敗 · ")) return "Cast failed · " + chinese.substring("投放失敗 · ".length());
+        if (chinese.startsWith("已傳送給電視 · ")) return "Sent to TV · " + chinese.substring("已傳送給電視 · ".length());
+        if (chinese.startsWith("網頁目前解碼：")) return "Currently decoded by webpage: " + chinese.substring("網頁目前解碼：".length());
+        if (chinese.startsWith("安裝完成：")) return "Installed: " + chinese.substring("安裝完成：".length()).replace("。電視畫面沒有切換。", ". The TV screen was not changed.");
+        if (chinese.startsWith("電視安裝中（") && chinese.endsWith("）…")) return "Installing on TV (" + chinese.substring("電視安裝中（".length(), chinese.length() - 2) + ")…";
+        if (chinese.startsWith("電視安裝服務拒絕套件：")) return "TV installation service rejected the package: " + chinese.substring("電視安裝服務拒絕套件：".length());
+        if (chinese.startsWith("電視無法校驗已傳送的套件")) return "The TV could not verify the uploaded package.";
+        if (chinese.startsWith("電視安裝失敗：")) return "TV installation failed: " + chinese.substring("電視安裝失敗：".length());
+        if (chinese.startsWith("SSH 指紋")) return "SSH fingerprint" + chinese.substring("SSH 指紋".length());
+        switch (chinese) {
+            case "‹ 返回控制": return "‹ Back to controls";
+            case "網頁找影片": return "Find videos on web";
+            case "串流預覽": return "Stream preview";
+            case "掃描電視「手機控制連線」畫面上的 QR code": return "Scan the QR code on the TV's Phone Control screen";
+            case "重設電視 SSH 指紋？": return "Reset TV SSH fingerprint?";
+            case "這會刪除手機已信任的電視 SSH 指紋。下次安裝時會再次顯示指紋確認。只在更換電視或重設 Developer Mode 後使用。": return "This deletes the TV SSH fingerprint trusted by this phone. You will be asked to confirm it again during the next installation. Use this only after changing TVs or resetting Developer Mode.";
+            case "取消": return "Cancel";
+            case "重設指紋": return "Reset fingerprint";
+            case "確認安裝電視 App": return "Confirm TV app installation";
+            case "確認安裝": return "Install";
+            case "選擇 webOS .ipk 套件": return "Choose webOS .ipk package";
+            case "安裝進行中，暫時無法重設指紋。": return "Installation is in progress. The fingerprint cannot be reset right now.";
+            case "已有安裝工作進行中。": return "An installation is already in progress.";
+            case "請先設定電視 IP，再安裝套件。": return "Set the TV IP before installing the package.";
+            case "請先選擇有效的 .ipk 套件。": return "Select a valid .ipk package first.";
+            case "請輸入電視 Developer Mode 顯示的 passphrase。": return "Enter the passphrase shown in TV Developer Mode.";
+            case "已取消安裝，電視沒有變更。": return "Installation canceled. The TV was not changed.";
+            case "安裝失敗，請確認 Developer Mode 與電視連線。": return "Installation failed. Check Developer Mode and the TV connection.";
+            case "正在向電視 Developer Mode 取得 SSH 金鑰…": return "Requesting an SSH key from TV Developer Mode…";
+            case "已安全連上電視，正在傳送套件…": return "Securely connected to TV. Uploading package…";
+            case "套件已傳完，正在由電視安裝…": return "Package uploaded. Installing on TV…";
+            case "電視正在讀取套件…": return "TV is reading the package…";
+            case "電視已讀取套件，正在準備安裝…": return "TV read the package. Preparing installation…";
+            case "電視正在安裝 App…": return "TV is installing the app…";
+            case "電視正在完成 App 安裝設定…": return "TV is finishing app setup…";
+            case "電視沒有回傳套件校驗結果。": return "TV did not return the package verification result.";
+            case "電視安裝服務拒絕套件：": return "TV installation service rejected the package: ";
+            case "電視已取消這次安裝。": return "TV canceled the installation.";
+            case "重設 SSH 指紋": return "Reset SSH fingerprint";
+            case "信任並繼續": return "Trust and continue";
+            case "確認電視 SSH 指紋": return "Confirm TV SSH fingerprint";
+            case "準備開啟網頁…": return "Opening webpage…";
+            case "在網頁播放器按播放，自動偵測影片來源": return "Press Play in the webpage player to detect video sources";
+            case "已略過廣告跳轉，仍停留在原頁面": return "Ad redirect skipped. Staying on this page.";
+            case "已略過播放器的廣告跳轉，保留目前頁面。": return "Skipped an ad redirect and kept the current page.";
+            case "這個連結沒有可開啟的網頁備用網址": return "This link has no web fallback to open.";
+            case "這個 intent:// 連結沒有可用的 http 或 https 備用網址。": return "This intent:// link has no usable HTTP or HTTPS fallback.";
+            case "這個連結不是 http 或 https 網址，影片偵測頁無法開啟。": return "This is not an HTTP or HTTPS link, so the video finder cannot open it.";
+            case "請確認網路後重新載入網頁": return "Check your network, then reload the webpage.";
+            case "影片來源 · 0": return "Video sources · 0";
+            case "清空": return "Clear";
+            case "復原": return "Undo";
+            case "展開影片來源清單": return "Expand video source list";
+            case "收合影片來源清單": return "Collapse video source list";
+            case "請在網頁播放器按播放，自動偵測影片來源": return "Press Play in the webpage player to detect video sources";
+            case "來源清單已清空，可按「復原」還原": return "Source list cleared. Tap Undo to restore it.";
+            case "在網頁播放器按播放，手機會自動尋找影片來源。\n有些網站採用 DRM、blob 串流或登入驗證，可能無法直接偵測。": return "Press Play in the webpage player and your phone will look for video sources.\nSome sites use DRM, blob streams, or sign-in and may not be detectable.";
+            case "重新載入此頁": return "Reload this page";
+            case "投放到電視": return "Cast to TV";
+            case "目前頁面沒有可重新載入的網址": return "There is no webpage URL to reload.";
+            case "已復原影片來源清單": return "Video source list restored.";
+            case "點開清單，選擇想預覽或投放的來源": return "Open the list to choose a source to preview or cast.";
+            case "已開啟網頁…": return "Opening webpage…";
+            case "已開啟影片來源偵測。": return "Video source finder opened.";
+            case "請先選擇影片來源": return "Select a video source first.";
+            case "正在傳送影片來源到電視…": return "Sending video source to TV…";
+            case "無法準備影片播放資料": return "Could not prepare video playback data.";
+            case "投放失敗 · ": return "Cast failed · ";
+            case "HLS／m3u8": return "HLS/m3u8";
+            case "未知／可能是直播": return "Unknown / possibly live";
+            case "網址標示 ": return "URL indicates ";
+            case "畫質未標示": return "Quality not specified";
+            case "未知網站": return "Unknown site";
+            case "已選取": return "Selected";
+            case "選擇來源": return "Select source";
+            case "片長未知 · 尺寸未知 · 點預覽讀取": return "Duration unknown · size unknown · preview to read details";
+            case "預覽": return "Preview";
+            case "手機串流預覽": return "Phone stream preview";
+            case "正在讀取時長與影片尺寸…": return "Reading duration and video dimensions…";
+            case "等待影片…": return "Waiting for video…";
+            case "若無法預覽，來源可能需要網站驗證、特殊標頭或 DRM。": return "If preview fails, the source may require site authentication, special headers, or DRM.";
+            case "沒有可解碼的影像軌，可能只有聲音或手機不支援影片編碼；已停止預覽聲音。仍可嘗試送到電視。": return "No decodable video track was found. The source may contain only audio or use an unsupported codec. Preview audio stopped; you can still try the TV.";
+            case "沒有手機可解碼的影像軌": return "No video track the phone can decode";
+            case "沒有畫面": return "No video";
+            case "長度：": return "Duration: ";
+            case "畫面：": return "Video: ";
+            case "繼續播放": return "Resume";
+            case "暫停": return "Pause";
+            case "已讀到影片尺寸，但手機沒有解出畫面；已停止播放聲音。這個來源仍可嘗試送到電視。": return "Video dimensions were detected, but the phone could not render a frame. Audio stopped. You can still try the TV.";
+            case "有影片軌，但手機沒有預覽畫面": return "Video track found, but no phone preview";
+            case "手機無預覽畫面": return "No phone preview";
+            case "手機無法解碼這段影片；可能需要網站驗證、DRM，或影片編碼不相容。仍可嘗試送到電視。 ": return "The phone could not decode this video. It may require site authentication, DRM, or an incompatible codec. You can still try the TV.";
+            case "手機解碼失敗；可試電視播放": return "Phone decode failed; try TV playback";
+            case "預覽失敗": return "Preview failed";
+            case "手機無法開啟這個串流；可能需要網站驗證、特殊標頭或 DRM。仍可嘗試送到電視。": return "The phone could not open this stream. It may require site authentication, special headers, or DRM. You can still try the TV.";
+            case "手機預覽無法開啟；可試電視播放": return "Phone preview could not open; try TV playback";
+            case "長度未知 · 尺寸未知 · 點預覽讀取": return "Duration unknown · size unknown · preview to read details";
+            case "正在開啟網頁…": return "Opening webpage…";
+            case "網頁目前解碼：": return "Currently decoded by webpage: ";
+            default: return chinese;
+        }
+    }
+
+    private void setNativeUiText(TextView view, String sourceText) {
+        nativeUiTextViews.put(view, sourceText);
+        view.setText(uiText(sourceText));
+    }
+
+    private void refreshNativeUiLanguage() {
+        for (Map.Entry<TextView, String> entry : nativeUiTextViews.entrySet()) {
+            entry.getKey().setText(uiText(entry.getValue()));
+        }
+        if (candidateSheet != null) updateCandidateSheet();
     }
 
     private String configuredTvHost() {
@@ -907,6 +1055,13 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void setUiLanguage(String language) {
+            String selected = "en".equalsIgnoreCase(language) ? "en" : "zh";
+            tvPreferences().edit().putString("ui_language", selected).apply();
+            mainHandler.post(() -> refreshNativeUiLanguage());
+        }
+
+        @JavascriptInterface
         public void launchTvApp(String payloadText, String callbackId) {
             if (controllerWebView == null) {
                 postControllerLaunchResult(callbackId, false, "控制頁來源無效，請重新開啟手機控制頁。");
@@ -968,7 +1123,7 @@ public final class MainActivity extends Activity {
                 picker.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
                         "application/vnd.debian.binary-package", "application/x-deb", "application/octet-stream"
                 });
-                picker.putExtra(Intent.EXTRA_TITLE, "選擇 webOS .ipk 套件");
+                picker.putExtra(Intent.EXTRA_TITLE, uiText("選擇 webOS .ipk 套件"));
                 try {
                     startActivityForResult(picker, REQUEST_TV_APP_PACKAGE);
                 } catch (Exception error) {
@@ -1000,11 +1155,11 @@ public final class MainActivity extends Activity {
                     return;
                 }
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("重設電視 SSH 指紋？")
-                        .setMessage("這會刪除手機已信任的電視 SSH 指紋。下次安裝時會再次顯示指紋確認。只在更換電視或重設 Developer Mode 後使用。")
-                        .setNegativeButton("取消", (dialog, which) ->
+                        .setTitle(uiText("重設電視 SSH 指紋？"))
+                        .setMessage(uiText("這會刪除手機已信任的電視 SSH 指紋。下次安裝時會再次顯示指紋確認。只在更換電視或重設 Developer Mode 後使用。"))
+                        .setNegativeButton(uiText("取消"), (dialog, which) ->
                                 postControllerTvAppTrustReset(callbackId, false, "沒有變更電視 SSH 指紋。"))
-                        .setPositiveButton("重設指紋", (dialog, which) -> {
+                        .setPositiveButton(uiText("重設指紋"), (dialog, which) -> {
                             File knownHosts = new File(getFilesDir(), "webos-tv-known-hosts");
                             boolean reset = !knownHosts.exists() || knownHosts.delete();
                             postControllerTvAppTrustReset(callbackId, reset,
@@ -1040,14 +1195,18 @@ public final class MainActivity extends Activity {
                 final TvAppInstaller.PackageInfo packageInfo = selectedTvAppPackageInfo;
                 final String installHost = host;
                 final String installPassphrase = enteredPassphrase;
-                String version = packageInfo.version.isEmpty() ? "" : "\n版本：" + packageInfo.version;
+                String version = packageInfo.version.isEmpty() ? "" : (isEnglishUi() ? "\nVersion: " : "\n版本：") + packageInfo.version;
+                String installConfirmation = isEnglishUi()
+                        ? "Name: " + packageInfo.title + "\nApp ID: " + packageInfo.id + version
+                            + "\n\nTarget TV: " + host + "\n\nThis installs the package only. It will not launch the app or switch the TV screen."
+                        : "名稱：" + packageInfo.title + "\nApp ID：" + packageInfo.id + version
+                            + "\n\n目標電視：" + host + "\n\n確認後會安裝套件，不會自動開啟或切換電視畫面。";
                 new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("確認安裝電視 App")
-                        .setMessage("名稱：" + packageInfo.title + "\nApp ID：" + packageInfo.id + version
-                                + "\n\n目標電視：" + host + "\n\n確認後會安裝套件，不會自動開啟或切換電視畫面。")
-                        .setNegativeButton("取消", (dialog, which) ->
+                        .setTitle(uiText("確認安裝電視 App"))
+                        .setMessage(installConfirmation)
+                        .setNegativeButton(uiText("取消"), (dialog, which) ->
                                 postControllerTvAppInstallStatus(callbackId, true, false, "已取消安裝，電視沒有變更。"))
-                        .setPositiveButton("確認安裝", (dialog, which) -> {
+                        .setPositiveButton(uiText("確認安裝"), (dialog, which) -> {
                             tvAppInstallerBusy = true;
                             tvAppInstallerExecutor.execute(() -> {
                                 try {
@@ -1431,7 +1590,7 @@ public final class MainActivity extends Activity {
             if (controllerWebView == null) return;
             String script = "window.onNativeTvAppInstallStatus && window.onNativeTvAppInstallStatus("
                     + JSONObject.quote(callbackId == null ? "" : callbackId) + "," + finished + ","
-                    + success + "," + JSONObject.quote(message == null ? "" : message) + ");";
+                    + success + "," + JSONObject.quote(uiText(message == null ? "" : message)) + ");";
             controllerWebView.evaluateJavascript(script, null);
         });
     }
@@ -1592,7 +1751,7 @@ public final class MainActivity extends Activity {
                     tvPowerTogglePending.set(false);
                     String message = "已送出 Wi-Fi 喚醒封包；請確認電視已開啟 Mobile TV On。";
                     setControllerStatus(message);
-                    Toast.makeText(this, "已送出電視喚醒訊號", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, uiText("已送出電視喚醒訊號"), Toast.LENGTH_SHORT).show();
                     postControllerTvPowerToggleResult(callbackId, true, message, true, false);
                 });
             } catch (Exception error) {
@@ -1611,7 +1770,7 @@ public final class MainActivity extends Activity {
     private void scanTvQrCode() {
         IntentIntegrator scanner = new IntentIntegrator(this);
         scanner.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
-        scanner.setPrompt("掃描電視「手機控制連線」畫面上的 QR code");
+        scanner.setPrompt(uiText("掃描電視「手機控制連線」畫面上的 QR code"));
         scanner.setBeepEnabled(false);
         scanner.setOrientationLocked(true);
         scanner.initiateScan();
@@ -2076,8 +2235,8 @@ public final class MainActivity extends Activity {
         candidateSheetExpanded = false;
         candidateMetadataViews.clear();
         candidateRows.removeAllViews();
-        pageStatus.setText("正在開啟網頁…");
-        playbackInfo.setText("在網頁播放器按播放，自動偵測影片來源");
+        setNativeUiText(pageStatus, "正在開啟網頁…");
+        setNativeUiText(playbackInfo, "在網頁播放器按播放，自動偵測影片來源");
         pageLoaded = false;
         mainHandler.removeCallbacks(playbackInfoPoller);
         updateCandidateSheet();
@@ -2104,7 +2263,7 @@ public final class MainActivity extends Activity {
         selectedMediaUrl = "";
         candidateMetadataViews.clear();
         candidateRows.removeAllViews();
-        if (pageStatus != null) pageStatus.setText("來源清單已清空，可按「復原」還原");
+        if (pageStatus != null) setNativeUiText(pageStatus, "來源清單已清空，可按「復原」還原");
         updateCandidateSheet();
     }
 
@@ -2141,7 +2300,7 @@ public final class MainActivity extends Activity {
         clearedCandidateHeaders.clear();
         clearedSelectedMediaUrl = "";
         renderCandidateCards();
-        if (pageStatus != null) pageStatus.setText("已復原影片來源清單");
+        if (pageStatus != null) setNativeUiText(pageStatus, "已復原影片來源清單");
     }
 
     private void renderCandidateCards() {
@@ -2170,7 +2329,7 @@ public final class MainActivity extends Activity {
         LinearLayout titleRow = new LinearLayout(this);
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView summary = new TextView(this);
-        summary.setText(candidateSummary(value));
+        setNativeUiText(summary, candidateSummary(value));
         summary.setTextColor(TEXT);
         summary.setTextSize(14);
         summary.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -2178,14 +2337,14 @@ public final class MainActivity extends Activity {
         summary.setEllipsize(TextUtils.TruncateAt.END);
         titleRow.addView(summary, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         TextView selectionBadge = new TextView(this);
-        selectionBadge.setText(selected ? "已選取" : "選擇來源");
+        setNativeUiText(selectionBadge, selected ? "已選取" : "選擇來源");
         selectionBadge.setTextColor(selected ? ACCENT : MUTED);
         selectionBadge.setTextSize(11);
         titleRow.addView(selectionBadge, wrapParams());
         card.addView(titleRow, matchWrap());
 
         TextView source = new TextView(this);
-        source.setText(candidateSource(value));
+        setNativeUiText(source, candidateSource(value));
         source.setTextColor(MUTED);
         source.setTextSize(12);
         source.setSingleLine(true);
@@ -2196,7 +2355,7 @@ public final class MainActivity extends Activity {
         card.addView(source, sourceParams);
 
         TextView metadata = new TextView(this);
-        metadata.setText("片長未知 · 尺寸未知 · 點預覽讀取");
+        setNativeUiText(metadata, "片長未知 · 尺寸未知 · 點預覽讀取");
         metadata.setTextColor(MUTED);
         metadata.setTextSize(11);
         metadata.setSingleLine(true);
@@ -2268,7 +2427,7 @@ public final class MainActivity extends Activity {
             if (TextUtils.isEmpty(selectedMediaUrl)) selectedMediaUrl = value;
             addCandidateCard(value);
             String currentUrl = webView == null ? "" : webView.getUrl();
-            pageStatus.setText("已開啟 " + readableHost(currentUrl) + " · 找到 " + mediaCandidateCount() + " 個來源");
+            setNativeUiText(pageStatus, "已開啟 " + readableHost(currentUrl) + " · 找到 " + mediaCandidateCount() + " 個來源");
         });
     }
 
@@ -2291,14 +2450,14 @@ public final class MainActivity extends Activity {
         content.setBackgroundColor(BG);
 
         TextView heading = new TextView(this);
-        heading.setText("手機串流預覽");
+        setNativeUiText(heading, "手機串流預覽");
         heading.setTextColor(TEXT);
         heading.setTextSize(18);
         heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         content.addView(heading, matchWrap());
 
         TextView info = new TextView(this);
-        info.setText("正在讀取時長與影片尺寸…");
+        setNativeUiText(info, "正在讀取時長與影片尺寸…");
         info.setTextColor(MUTED);
         info.setTextSize(13);
         info.setPadding(0, dp(5), 0, dp(8));
@@ -2315,19 +2474,19 @@ public final class MainActivity extends Activity {
         content.addView(videoFrame, videoFrameParams);
 
         Button playPause = new Button(this);
-        playPause.setText("等待影片…");
+        setNativeUiText(playPause, "等待影片…");
         playPause.setEnabled(false);
         content.addView(playPause, matchWrap());
 
         TextView note = new TextView(this);
-        note.setText("若無法預覽，來源可能需要網站驗證、特殊標頭或 DRM。");
+        setNativeUiText(note, "若無法預覽，來源可能需要網站驗證、特殊標頭或 DRM。");
         note.setTextColor(MUTED);
         note.setTextSize(11);
         note.setPadding(0, dp(6), 0, 0);
         content.addView(note, matchWrap());
 
         dialog.setContentView(content);
-        dialog.setTitle("串流預覽");
+        dialog.setTitle(uiText("串流預覽"));
         MediaPlayer player = new MediaPlayer();
         Surface[] outputSurface = new Surface[1];
         boolean[] prepared = {false};
@@ -2343,9 +2502,9 @@ public final class MainActivity extends Activity {
 
         Runnable showNoVideoTrack = () -> {
             String message = "沒有可解碼的影像軌，可能只有聲音或手機不支援影片編碼；已停止預覽聲音。仍可嘗試送到電視。";
-            info.setText(message);
-            if (rowInfo != null) rowInfo.setText("沒有手機可解碼的影像軌");
-            playPause.setText("沒有畫面");
+            setNativeUiText(info, message);
+            if (rowInfo != null) setNativeUiText(rowInfo, "沒有手機可解碼的影像軌");
+            setNativeUiText(playPause, "沒有畫面");
             playPause.setEnabled(false);
         };
 
@@ -2357,8 +2516,8 @@ public final class MainActivity extends Activity {
             videoFrame.setAspectRatio(width, height);
             String details = "長度：" + formatDuration(player.getDuration())
                     + "　畫面：" + width + " × " + height;
-            info.setText(details);
-            if (rowInfo != null) rowInfo.setText(details);
+            setNativeUiText(info, details);
+            if (rowInfo != null) setNativeUiText(rowInfo, details);
         };
 
         dialog.setOnDismissListener(ignored -> {
@@ -2375,10 +2534,10 @@ public final class MainActivity extends Activity {
             try {
                 if (player.isPlaying()) {
                     player.pause();
-                    playPause.setText("繼續播放");
+                    setNativeUiText(playPause, "繼續播放");
                 } else {
                     player.start();
-                    playPause.setText("暫停");
+                    setNativeUiText(playPause, "暫停");
                 }
             } catch (IllegalStateException ignoredState) {
                 showNoVideoTrack.run();
@@ -2407,29 +2566,29 @@ public final class MainActivity extends Activity {
                         }
                         updateVideoDetails.run();
                         playPause.setEnabled(true);
-                        playPause.setText("暫停");
+                        setNativeUiText(playPause, "暫停");
                         mediaPlayer.start();
                         mainHandler.postDelayed(() -> {
                             if (released[0] || !prepared[0] || firstVideoFrame[0]) return;
                             try { mediaPlayer.pause(); } catch (IllegalStateException ignoredState) {}
-                            info.setText("已讀到影片尺寸，但手機沒有解出畫面；已停止播放聲音。這個來源仍可嘗試送到電視。");
-                            if (rowInfo != null) rowInfo.setText("有影片軌，但手機沒有預覽畫面");
-                            playPause.setText("手機無預覽畫面");
+                            setNativeUiText(info, "已讀到影片尺寸，但手機沒有解出畫面；已停止播放聲音。這個來源仍可嘗試送到電視。");
+                            if (rowInfo != null) setNativeUiText(rowInfo, "有影片軌，但手機沒有預覽畫面");
+                            setNativeUiText(playPause, "手機無預覽畫面");
                             playPause.setEnabled(false);
                         }, 5000);
                     });
                     player.setOnErrorListener((mediaPlayer, what, extra) -> {
-                        info.setText("手機無法解碼這段影片；可能需要網站驗證、DRM，或影片編碼不相容。仍可嘗試送到電視。 ");
-                        if (rowInfo != null) rowInfo.setText("手機解碼失敗；可試電視播放");
-                        playPause.setText("預覽失敗");
+                        setNativeUiText(info, "手機無法解碼這段影片；可能需要網站驗證、DRM，或影片編碼不相容。仍可嘗試送到電視。 ");
+                        if (rowInfo != null) setNativeUiText(rowInfo, "手機解碼失敗；可試電視播放");
+                        setNativeUiText(playPause, "預覽失敗");
                         playPause.setEnabled(false);
                         return true;
                     });
                     player.setDataSource(MainActivity.this, Uri.parse(mediaUrl), headers);
                     player.prepareAsync();
                 } catch (Exception error) {
-                    info.setText("手機無法開啟這個串流；可能需要網站驗證、特殊標頭或 DRM。仍可嘗試送到電視。");
-                    if (rowInfo != null) rowInfo.setText("手機預覽無法開啟；可試電視播放");
+                    setNativeUiText(info, "手機無法開啟這個串流；可能需要網站驗證、特殊標頭或 DRM。仍可嘗試送到電視。");
+                    if (rowInfo != null) setNativeUiText(rowInfo, "手機預覽無法開啟；可試電視播放");
                     playPause.setEnabled(false);
                 }
             }
@@ -2517,7 +2676,7 @@ public final class MainActivity extends Activity {
             if (value == null || "null".equals(value)) return;
             Matcher dimensions = VIDEO_DIMENSIONS.matcher(value);
             if (dimensions.find()) {
-                playbackInfo.setText("網頁目前解碼：" + dimensions.group(1) + " × " + dimensions.group(2));
+                setNativeUiText(playbackInfo, "網頁目前解碼：" + dimensions.group(1) + " × " + dimensions.group(2));
             }
         });
     }
@@ -2528,17 +2687,17 @@ public final class MainActivity extends Activity {
 
     private void sendToTv(String mediaUrl) {
         if (TextUtils.isEmpty(mediaUrl)) {
-            pageStatus.setText("請先選擇影片來源");
+            setNativeUiText(pageStatus, "請先選擇影片來源");
             return;
         }
-        pageStatus.setText("正在傳送影片來源到電視…");
+        setNativeUiText(pageStatus, "正在傳送影片來源到電視…");
         JSONObject payload = new JSONObject();
         try { payload.put("mediaUrl", mediaUrl); }
         catch (Exception error) {
-            pageStatus.setText("無法準備影片播放資料");
+            setNativeUiText(pageStatus, "無法準備影片播放資料");
             return;
         }
-        launchToTv(payload, (success, message) -> pageStatus.setText(success
+        launchToTv(payload, (success, message) -> setNativeUiText(pageStatus, success
                 ? "已傳送給電視 · " + message : "投放失敗 · " + message));
     }
 
