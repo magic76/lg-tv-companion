@@ -23,7 +23,8 @@
     button:focus, input:focus, textarea:focus, summary:focus { outline: 3px solid var(--focus); outline-offset: 2px; }
     .page { width: min(100%, 640px); margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 16px calc(92px + env(safe-area-inset-bottom)); }
     header { display: flex; align-items: center; min-height: 42px; margin: 0 0 10px; }
-    .logo { display: grid; place-items: center; width: 36px; height: 36px; margin-right: 10px; border-radius: 11px; color: #15201e; background: var(--accent); font-weight: 900; font-size: 17px; }
+    .logo { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 auto; margin-right: 10px; border-radius: 11px; overflow: hidden; box-shadow: 0 3px 12px #0004; }
+    .logo svg { display: block; width: 36px; height: 36px; }
     h1 { margin: 0; font-size: 18px; }
     .header-copy { min-width: 0; flex: 1; }
     .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
@@ -206,7 +207,14 @@
 <body>
   <main class="page">
     <header>
-      <div class="logo" aria-hidden="true">TV</div>
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="2" width="44" height="44" rx="11" fill="#101820"/>
+          <rect x="7.5" y="10.5" width="33" height="22" rx="4.5" fill="#18323A" stroke="#9BE1CD" stroke-width="2.5"/>
+          <path d="M20 15.8 32 21.7 20 27.6V15.8Z" fill="#FF7B72"/>
+          <path d="M24 32.5v5M16 38h16" stroke="#9BE1CD" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div class="header-copy">
         <h1>LG 電視 Companion</h1>
       </div>

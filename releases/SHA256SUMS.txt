@@ -42,3 +42,4 @@ da490277730cd659361497204db8f15baf9ca7a3792cf1a1ed2a84aecc25282a  releases/LGTVC
 fd72031f119467b77ad7c3564da1e89c46ae4b70dcbca47d42acb6fcd66fb579  releases/LGTVCompanion-Android-v1.4.45.apk
 3940689679a1978c2252ea6a9d4910021290b74c9f05cbc071418a491abda60e  releases/LGTVCompanion-Android-v1.4.46.apk
 a4b3cff50f485ef9448683af31b77a77c5b196940f3dfa5497491cf224f8a997  releases/LGTVCompanion-Android-v1.4.47.apk
+6a5813794671aedb15eef547b48ac66c9736959181ef1f123c9301d58b2360bc  releases/LGTVCompanion-Android-v1.4.48.apk

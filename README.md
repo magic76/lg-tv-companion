@@ -12,11 +12,11 @@ LG TV Companion 由 Android 手機 companion 和 LG webOS 電視 App 組成，�
 | `webos-tv/app/` | LG webOS 電視 App：網站與收藏管理、Gemini 對話、手機控制及支援的影片串流播放 |
 | `releases/` | Android APK、webOS IPK 與 SHA-256 校驗檔 |
 
-目前版本：Android companion `1.4.47`、webOS TV App `1.4.18`。手機控制介面支援繁體中文與英文，可從頁面頂部切換；語言會保存在手機上。Android APK 已內附 TV App IPK，可從手機安裝到電視。
+目前版本：Android companion `1.4.48`、webOS TV App `1.4.18`。手機控制介面支援繁體中文與英文，可從頁面頂部切換；語言會保存在手機上。Android APK 已內附 TV App IPK，可從手機安裝到電視。
 
 ### 下載
 
-- [Android companion APK v1.4.47](releases/LGTVCompanion-Android-v1.4.47.apk) — 內含 webOS TV v1.4.18 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
+- [Android companion APK v1.4.48](releases/LGTVCompanion-Android-v1.4.48.apk) — 內含 webOS TV v1.4.18 IPK；debug 簽名，供自行安裝，不是 Play Store 發行版。
 - [LG webOS TV IPK v1.4.18](releases/com.example.hellotv_1.4.18_all.ipk)
 - [SHA-256 校驗檔](releases/SHA256SUMS.txt)
 
@@ -85,7 +85,7 @@ LG TV Companion consists of an Android phone companion and an LG webOS TV app. I
 | `webos-tv/app/` | LG webOS TV app: website and bookmark management, Gemini conversations, phone control, and supported video playback |
 | `releases/` | Android APKs, webOS IPKs, and SHA-256 checksums |
 
-Current versions: Android companion `1.4.47` and webOS TV app `1.4.18`. The phone companion supports Traditional Chinese and English. Switch languages from the top of the page; the choice is saved on the phone. The Android APK bundles the TV app IPK so it can be installed from the phone.
+Current versions: Android companion `1.4.48` and webOS TV app `1.4.18`. The phone companion supports Traditional Chinese and English. Switch languages from the top of the page; the choice is saved on the phone. The Android APK bundles the TV app IPK so it can be installed from the phone.
 
 ### Downloads
 
