@@ -6,12 +6,12 @@ import android.app.Dialog;
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.SurfaceTexture;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.LinkProperties;
@@ -26,6 +26,7 @@ import android.text.InputType;
 import android.text.TextUtils;
 import android.text.Html;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
@@ -76,6 +77,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InterfaceAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -132,6 +134,10 @@ public final class MainActivity extends Activity {
     private volatile TvPointerClient pointerClient;
     private volatile TvAudioClient tvAudioClient;
     private final AtomicBoolean tvVolumeRequestPending = new AtomicBoolean(false);
+    private volatile TvPowerClient tvPowerStateClient;
+    private volatile TvPowerClient tvPowerToggleClient;
+    private final AtomicBoolean tvPowerStateCheckPending = new AtomicBoolean(false);
+    private final AtomicBoolean tvPowerTogglePending = new AtomicBoolean(false);
     private volatile WebView controllerWebView;
     private volatile String pendingControllerTvScanCallbackId = "";
     private volatile String pendingTvAppPackageCallbackId = "";
@@ -143,12 +149,27 @@ public final class MainActivity extends Activity {
     private FrameLayout controllerRoot;
     private String pendingSharedUrl = "";
     private volatile boolean controllerPageLoaded;
-    private LinearLayout browserRoot;
+    private FrameLayout browserRoot;
     private FrameLayout browserWebContainer;
     private TextView pageStatus;
     private TextView playbackInfo;
     private TextView emptyCandidates;
+    private LinearLayout candidateSheet;
     private LinearLayout candidateRows;
+    private LinearLayout candidateEmptyPanel;
+    private ScrollView candidateScroll;
+    private TextView candidateTitle;
+    private TextView candidateHint;
+    private TextView candidateToggle;
+    private TextView clearCandidatesButton;
+    private TextView undoCandidatesButton;
+    private TextView sendSelectedButton;
+    private FrameLayout.LayoutParams candidateSheetLayoutParams;
+    private String selectedMediaUrl = "";
+    private String clearedSelectedMediaUrl = "";
+    private final List<String> clearedMediaUrls = new ArrayList<>();
+    private final Map<String, Map<String, String>> clearedCandidateHeaders = new HashMap<>();
+    private boolean candidateSheetExpanded;
     private WebView webView;
     private WebView mediaPopupWebView;
     private String webUserAgent;
@@ -193,9 +214,7 @@ public final class MainActivity extends Activity {
         screen.addView(controllerRoot, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        browserRoot = new LinearLayout(this);
-        browserRoot.setOrientation(LinearLayout.VERTICAL);
-        browserRoot.setPadding(dp(12), dp(8), dp(12), dp(8));
+        browserRoot = new FrameLayout(this);
         browserRoot.setBackgroundColor(BG);
         browserRoot.setVisibility(View.GONE);
         screen.addView(browserRoot, new FrameLayout.LayoutParams(
@@ -207,77 +226,53 @@ public final class MainActivity extends Activity {
     }
 
     private void buildMediaBrowserUi() {
+        LinearLayout browserContent = new LinearLayout(this);
+        browserContent.setOrientation(LinearLayout.VERTICAL);
+        browserContent.setPadding(dp(12), dp(8), dp(12), 0);
+        browserRoot.addView(browserContent, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         LinearLayout browserHeader = new LinearLayout(this);
         browserHeader.setGravity(Gravity.CENTER_VERTICAL);
         Button backButton = new Button(this);
         backButton.setText("‹ 返回控制");
         backButton.setAllCaps(false);
         backButton.setTextColor(TEXT);
-        backButton.setBackgroundTintList(ColorStateList.valueOf(PANEL));
+        backButton.setBackground(makeRoundedDrawable(PANEL, dp(14), 0));
         backButton.setOnClickListener(view -> showControllerScreen());
         browserHeader.addView(backButton, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)));
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(44)));
         TextView browserTitle = new TextView(this);
-        browserTitle.setText("手機影片來源偵測");
+        browserTitle.setText("網頁找影片");
         browserTitle.setTextColor(TEXT);
         browserTitle.setTextSize(17);
         browserTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         browserTitle.setPadding(dp(12), 0, 0, 0);
         browserHeader.addView(browserTitle, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        browserRoot.addView(browserHeader, matchWrap());
+        browserContent.addView(browserHeader, matchWrap());
 
         pageStatus = new TextView(this);
+        pageStatus.setText("準備開啟網頁…");
         pageStatus.setTextColor(MUTED);
         pageStatus.setTextSize(12);
-        pageStatus.setMaxLines(2);
-        pageStatus.setPadding(dp(4), dp(3), dp(4), dp(3));
-        browserRoot.addView(pageStatus, matchWrap());
-
-        LinearLayout candidateHeader = new LinearLayout(this);
-        candidateHeader.setOrientation(LinearLayout.HORIZONTAL);
-        candidateHeader.setGravity(Gravity.CENTER_VERTICAL);
-        TextView candidateTitle = new TextView(this);
-        candidateTitle.setText("偵測到的影片來源");
-        candidateTitle.setTextColor(TEXT);
-        candidateTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        candidateTitle.setTextSize(15);
-        candidateHeader.addView(candidateTitle, new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        Button clearCandidates = new Button(this);
-        clearCandidates.setText("清空");
-        clearCandidates.setAllCaps(false);
-        clearCandidates.setTextSize(12);
-        clearCandidates.setMinHeight(dp(40));
-        clearCandidates.setPadding(dp(10), 0, dp(10), 0);
-        clearCandidates.setOnClickListener(view -> clearMediaCandidates());
-        candidateHeader.addView(clearCandidates, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        browserRoot.addView(candidateHeader, matchWrap());
+        pageStatus.setSingleLine(true);
+        pageStatus.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        pageStatus.setPadding(dp(4), dp(4), dp(4), dp(1));
+        browserContent.addView(pageStatus, matchWrap());
 
         playbackInfo = new TextView(this);
-        playbackInfo.setText("網頁解析度：等待播放器回報");
+        playbackInfo.setText("在網頁播放器按播放，自動偵測影片來源");
         playbackInfo.setTextColor(MUTED);
-        playbackInfo.setTextSize(12);
-        playbackInfo.setPadding(dp(2), dp(2), dp(2), dp(5));
-        browserRoot.addView(playbackInfo, matchWrap());
+        playbackInfo.setTextSize(11);
+        playbackInfo.setSingleLine(true);
+        playbackInfo.setEllipsize(TextUtils.TruncateAt.END);
+        playbackInfo.setPadding(dp(4), dp(1), dp(4), dp(7));
+        browserContent.addView(playbackInfo, matchWrap());
 
-        ScrollView candidateScroll = new ScrollView(this);
-        candidateScroll.setFillViewport(true);
-        candidateScroll.setBackgroundColor(PANEL);
-        candidateRows = new LinearLayout(this);
-        candidateRows.setOrientation(LinearLayout.VERTICAL);
-        candidateRows.setPadding(dp(8), dp(5), dp(8), dp(5));
-        emptyCandidates = new TextView(this);
-        emptyCandidates.setText("尚未找到串流。請在網頁中按播放。");
-        emptyCandidates.setTextColor(MUTED);
-        emptyCandidates.setTextSize(13);
-        emptyCandidates.setPadding(dp(6), dp(8), dp(6), dp(8));
-        candidateRows.addView(emptyCandidates, matchWrap());
-        candidateScroll.addView(candidateRows, new ScrollView.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        browserRoot.addView(candidateScroll, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(132)));
+        FrameLayout browserBody = new FrameLayout(this);
+        browserContent.addView(browserBody, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
         webView = new WebView(this);
         webView.setBackgroundColor(Color.BLACK);
@@ -294,13 +289,13 @@ public final class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (isPyppoUrl(url)) {
-                    pageStatus.setText("已略過播放器的廣告跳轉，保留目前頁面。");
+                    pageStatus.setText("已略過廣告跳轉，仍停留在原頁面");
                     return true;
                 }
                 if (!isIntentUrl(url)) return false;
                 String fallback = resolveIntentFallback(url);
                 if (fallback == null) {
-                    pageStatus.setText("這個 intent:// 連結沒有可用的 http 或 https 備用網址。");
+                    pageStatus.setText("這個連結沒有可開啟的網頁備用網址");
                 } else {
                     loadPage(fallback);
                 }
@@ -318,7 +313,7 @@ public final class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                pageStatus.setText("目前頁面：" + url);
+                pageStatus.setText("已開啟 · " + readableHost(url));
                 pageLoaded = true;
                 mainHandler.removeCallbacks(playbackInfoPoller);
                 mainHandler.post(playbackInfoPoller);
@@ -326,7 +321,10 @@ public final class MainActivity extends Activity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, android.webkit.WebResourceError error) {
-                if (request.isForMainFrame()) pageStatus.setText("網頁載入失敗：" + error.getDescription());
+                if (request.isForMainFrame()) {
+                    pageStatus.setText("網頁載入失敗 · " + error.getDescription());
+                    playbackInfo.setText("請確認網路後重新載入網頁");
+                }
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -370,8 +368,215 @@ public final class MainActivity extends Activity {
         browserWebContainer = new FrameLayout(this);
         browserWebContainer.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        browserRoot.addView(browserWebContainer, new LinearLayout.LayoutParams(
+        browserBody.addView(browserWebContainer, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        buildCandidateSheet();
+    }
+
+    private void buildCandidateSheet() {
+        candidateSheet = new LinearLayout(this);
+        candidateSheet.setOrientation(LinearLayout.VERTICAL);
+        candidateSheet.setPadding(dp(14), dp(7), dp(14), dp(10));
+        candidateSheet.setBackground(makeRoundedDrawable(PANEL, dp(20), 0));
+        candidateSheet.setElevation(dp(10));
+        candidateSheetLayoutParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(110), Gravity.BOTTOM);
+        candidateSheetLayoutParams.leftMargin = dp(4);
+        candidateSheetLayoutParams.rightMargin = dp(4);
+        candidateSheetLayoutParams.bottomMargin = dp(4);
+        browserRoot.addView(candidateSheet, candidateSheetLayoutParams);
+
+        View dragHandle = new View(this);
+        dragHandle.setBackground(makeRoundedDrawable(Color.rgb(105, 125, 137), dp(3), 0));
+        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(dp(38), dp(5));
+        handleParams.gravity = Gravity.CENTER_HORIZONTAL;
+        handleParams.bottomMargin = dp(6);
+        candidateSheet.addView(dragHandle, handleParams);
+        installSheetGesture(dragHandle);
+
+        LinearLayout heading = new LinearLayout(this);
+        heading.setGravity(Gravity.CENTER_VERTICAL);
+        candidateTitle = new TextView(this);
+        candidateTitle.setText("影片來源 · 0");
+        candidateTitle.setTextColor(TEXT);
+        candidateTitle.setTextSize(15);
+        candidateTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        heading.addView(candidateTitle, new LinearLayout.LayoutParams(0, dp(36), 1f));
+
+        clearCandidatesButton = sheetAction("清空", () -> clearMediaCandidates());
+        undoCandidatesButton = sheetAction("復原", () -> undoClearMediaCandidates());
+        candidateToggle = sheetAction("⌃", () -> toggleCandidateSheet());
+        candidateToggle.setTextSize(20);
+        candidateToggle.setContentDescription("展開影片來源清單");
+        heading.addView(clearCandidatesButton, wrapParams());
+        heading.addView(undoCandidatesButton, wrapParams());
+        heading.addView(candidateToggle, new LinearLayout.LayoutParams(dp(42), dp(40)));
+        candidateSheet.addView(heading, matchWrap());
+        installSheetGesture(heading);
+
+        candidateHint = new TextView(this);
+        candidateHint.setText("請在網頁播放器按播放，自動偵測影片來源");
+        candidateHint.setTextColor(MUTED);
+        candidateHint.setTextSize(12);
+        candidateHint.setSingleLine(true);
+        candidateHint.setEllipsize(TextUtils.TruncateAt.END);
+        candidateHint.setPadding(dp(1), 0, dp(1), dp(5));
+        candidateSheet.addView(candidateHint, matchWrap());
+
+        candidateEmptyPanel = new LinearLayout(this);
+        candidateEmptyPanel.setOrientation(LinearLayout.VERTICAL);
+        candidateEmptyPanel.setGravity(Gravity.CENTER_VERTICAL);
+        candidateEmptyPanel.setPadding(dp(12), dp(8), dp(12), dp(8));
+        candidateEmptyPanel.setBackground(makeRoundedDrawable(Color.rgb(21, 31, 41), dp(14), 0));
+        emptyCandidates = new TextView(this);
+        emptyCandidates.setText("在網頁播放器按播放，手機會自動尋找影片來源。\n有些網站採用 DRM、blob 串流或登入驗證，可能無法直接偵測。");
+        emptyCandidates.setTextColor(MUTED);
+        emptyCandidates.setTextSize(12);
+        emptyCandidates.setLineSpacing(dp(3), 1f);
+        candidateEmptyPanel.addView(emptyCandidates, matchWrap());
+        TextView reloadPage = sheetAction("重新載入此頁", () -> reloadCurrentPage());
+        reloadPage.setGravity(Gravity.CENTER);
+        reloadPage.setBackground(makeRoundedDrawable(Color.rgb(42, 59, 70), dp(12), 0));
+        LinearLayout.LayoutParams reloadParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(40));
+        reloadParams.topMargin = dp(5);
+        candidateEmptyPanel.addView(reloadPage, reloadParams);
+        candidateSheet.addView(candidateEmptyPanel, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        candidateEmptyPanel.setVisibility(View.GONE);
+
+        candidateScroll = new ScrollView(this);
+        candidateScroll.setFillViewport(false);
+        candidateScroll.setClipToPadding(false);
+        candidateRows = new LinearLayout(this);
+        candidateRows.setOrientation(LinearLayout.VERTICAL);
+        candidateRows.setPadding(0, dp(3), 0, dp(7));
+        candidateScroll.addView(candidateRows, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        candidateSheet.addView(candidateScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        candidateScroll.setVisibility(View.GONE);
+
+        sendSelectedButton = new TextView(this);
+        sendSelectedButton.setText("投放到電視");
+        sendSelectedButton.setTextColor(Color.rgb(12, 33, 34));
+        sendSelectedButton.setTextSize(15);
+        sendSelectedButton.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        sendSelectedButton.setGravity(Gravity.CENTER);
+        sendSelectedButton.setBackground(makeRoundedDrawable(ACCENT, dp(14), 0));
+        sendSelectedButton.setOnClickListener(view -> {
+            if (!TextUtils.isEmpty(selectedMediaUrl)) sendToTv(selectedMediaUrl);
+        });
+        LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
+        sendParams.topMargin = dp(6);
+        candidateSheet.addView(sendSelectedButton, sendParams);
+        updateCandidateSheet();
+    }
+
+    private void installSheetGesture(View target) {
+        final float[] downY = {0};
+        target.setOnTouchListener((view, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                downY[0] = event.getRawY();
+                return true;
+            }
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                float delta = event.getRawY() - downY[0];
+                if (delta < -dp(28)) setCandidateSheetExpanded(true);
+                else if (delta > dp(28)) setCandidateSheetExpanded(false);
+                else toggleCandidateSheet();
+                return true;
+            }
+            return true;
+        });
+    }
+
+    private TextView sheetAction(String label, Runnable action) {
+        TextView button = new TextView(this);
+        button.setText(label);
+        button.setTextColor(TEXT);
+        button.setTextSize(12);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(9), 0, dp(9), 0);
+        button.setBackground(makeRoundedDrawable(Color.rgb(42, 59, 70), dp(11), 0));
+        button.setOnClickListener(view -> action.run());
+        return button;
+    }
+
+    private LinearLayout.LayoutParams wrapParams() {
+        return new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38));
+    }
+
+    private GradientDrawable makeRoundedDrawable(int color, int radius, int strokeColor) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(radius);
+        if (strokeColor != 0) drawable.setStroke(dp(1), strokeColor);
+        return drawable;
+    }
+
+    private void toggleCandidateSheet() {
+        setCandidateSheetExpanded(!candidateSheetExpanded);
+    }
+
+    private void setCandidateSheetExpanded(boolean expanded) {
+        candidateSheetExpanded = expanded;
+        updateCandidateSheet();
+    }
+
+    private void updateCandidateSheet() {
+        if (candidateSheet == null) return;
+        int count;
+        synchronized (mediaUrls) { count = mediaUrls.size(); }
+        boolean hasCandidates = count > 0;
+        candidateTitle.setText("影片來源 · " + count);
+        clearCandidatesButton.setVisibility(hasCandidates ? View.VISIBLE : View.GONE);
+        undoCandidatesButton.setVisibility(clearedMediaUrls.isEmpty() ? View.GONE : View.VISIBLE);
+        candidateToggle.setText(candidateSheetExpanded ? "⌄" : "⌃");
+        candidateToggle.setContentDescription(candidateSheetExpanded ? "收合影片來源清單" : "展開影片來源清單");
+        candidateHint.setText(hasCandidates ? selectedCandidateHint()
+                : (clearedMediaUrls.isEmpty() ? "請在網頁播放器按播放，自動偵測影片來源"
+                : "來源清單已清空，可按「復原」還原"));
+        candidateScroll.setVisibility(candidateSheetExpanded && hasCandidates ? View.VISIBLE : View.GONE);
+        candidateEmptyPanel.setVisibility(candidateSheetExpanded && !hasCandidates ? View.VISIBLE : View.GONE);
+        sendSelectedButton.setVisibility(hasCandidates ? View.VISIBLE : View.GONE);
+
+        int height;
+        if (candidateSheetExpanded) {
+            int desired = Math.min(dp(560), Math.round(getResources().getDisplayMetrics().heightPixels * 0.62f));
+            int available = browserRoot.getHeight() > dp(120) ? browserRoot.getHeight() - dp(12) : desired;
+            height = Math.max(dp(220), Math.min(desired, available));
+        } else {
+            height = hasCandidates ? dp(146) : dp(102);
+        }
+        candidateSheetLayoutParams.height = height;
+        candidateSheet.requestLayout();
+    }
+
+    private String selectedCandidateHint() {
+        String selected = selectedMediaUrl;
+        if (TextUtils.isEmpty(selected)) return "點開清單，選擇想預覽或投放的來源";
+        return "已選取 · " + candidateSummary(selected) + " · " + candidateSource(selected);
+    }
+
+    private String readableHost(String url) {
+        try {
+            String host = Uri.parse(url).getHost();
+            return TextUtils.isEmpty(host) ? url : host;
+        } catch (Exception ignored) {
+            return url;
+        }
+    }
+
+    private void reloadCurrentPage() {
+        String current = webView == null ? null : webView.getUrl();
+        if (TextUtils.isEmpty(current) || !(current.startsWith("http://") || current.startsWith("https://"))) {
+            pageStatus.setText("目前頁面沒有可重新載入的網址");
+            return;
+        }
+        loadPage(current);
     }
 
     private boolean routeMediaPopupUrl(WebView popup, String url) {
@@ -881,7 +1086,8 @@ public final class MainActivity extends Activity {
                 String oldHost = tvPreferences().getString("tv_host", "");
                 SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", normalized);
                 if (!normalized.equalsIgnoreCase(oldHost)) {
-                    editor.remove("tv_client_key").remove("tv_audio_client_key").remove("tv_mac");
+                    editor.remove("tv_client_key").remove("tv_audio_client_key")
+                            .remove("tv_power_client_key").remove("tv_mac");
                 }
                 editor.apply();
                 setControllerStatus("電視位址已儲存：" + normalized);
@@ -903,14 +1109,56 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void wakeTv(String callbackId) {
+        public void getTvPowerState(String callbackId) {
             mainHandler.post(() -> {
-                String mac = normalizeMac(tvPreferences().getString("tv_mac", ""));
-                if (mac.isEmpty()) {
-                    postControllerSettingsResult(callbackId, false, "先掃描電視 QR；如果 QR 沒有 MAC，請在下方填入電視 MAC。");
+                String host = configuredTvHost();
+                if (host.isEmpty()) {
+                    postControllerTvPowerState(callbackId, false, false);
                     return;
                 }
-                sendWakeOnLan(mac, callbackId);
+                if (tvPowerTogglePending.get()) {
+                    postControllerTvPowerState(callbackId, false, false);
+                    return;
+                }
+                if (!tvPowerStateCheckPending.compareAndSet(false, true)) {
+                    postControllerTvPowerState(callbackId, false, false);
+                    return;
+                }
+                String clientKey = tvPreferences().getString("tv_power_client_key", "");
+                if (clientKey.isEmpty()) {
+                    network.execute(() -> {
+                        boolean reachable = isTvSsapReachable(host);
+                        tvPowerStateCheckPending.set(false);
+                        postControllerTvPowerState(callbackId, true, reachable);
+                    });
+                    return;
+                }
+                startTvPowerClient(host, clientKey, false, callbackId);
+            });
+        }
+
+        @JavascriptInterface
+        public void toggleTvPower(String callbackId) {
+            mainHandler.post(() -> {
+                String host = configuredTvHost();
+                if (host.isEmpty()) {
+                    postControllerTvPowerToggleResult(callbackId, false,
+                            "請先掃描電視 QR code 或設定電視 IP。", false, false);
+                    return;
+                }
+                if (!tvPowerTogglePending.compareAndSet(false, true)) {
+                    postControllerTvPowerToggleResult(callbackId, false,
+                            "電視電源操作仍在進行，請稍候。", false, false);
+                    return;
+                }
+                network.execute(() -> {
+                    if (!isTvSsapReachable(host)) {
+                        sendWakeOnLan(tvPreferences().getString("tv_mac", ""), callbackId);
+                        return;
+                    }
+                    String clientKey = tvPreferences().getString("tv_power_client_key", "");
+                    startTvPowerClient(host, clientKey, true, callbackId);
+                });
             });
         }
 
@@ -941,7 +1189,7 @@ public final class MainActivity extends Activity {
             }
             TvPointerClient current = pointerClient;
             if (current != null && current.isConnected()) {
-                postControllerPointerStatus(true, "觸控板已連線。單指滑動移動游標，點一下確認，雙指滑動捲動。");
+                postControllerPointerStatus(true, "遙控器已連線。可在方向鍵與觸控板分頁切換；觸控板右側上下捲動、底部左右捲動。");
                 return;
             }
             if (current != null) current.close();
@@ -1088,6 +1336,28 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private void postControllerTvPowerState(String callbackId, boolean known, boolean isOn) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeTvPowerState && window.onNativeTvPowerState("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + ","
+                    + known + "," + isOn + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
+    private void postControllerTvPowerToggleResult(String callbackId, boolean success, String message,
+                                                  boolean stateKnown, boolean isOn) {
+        mainHandler.post(() -> {
+            if (controllerWebView == null) return;
+            String script = "window.onNativeTvPowerToggleResult && window.onNativeTvPowerToggleResult("
+                    + JSONObject.quote(callbackId == null ? "" : callbackId) + ","
+                    + success + "," + JSONObject.quote(message == null ? "" : message) + ","
+                    + stateKnown + "," + isOn + ");";
+            controllerWebView.evaluateJavascript(script, null);
+        });
+    }
+
     private void postControllerImeStatus(String callbackId, boolean success, String message) {
         mainHandler.post(() -> {
             if (controllerWebView == null) return;
@@ -1196,13 +1466,77 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private boolean isTvSsapReachable(String host) {
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, 3000), 1200);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void startTvPowerClient(String host, String clientKey, boolean toggle, String callbackId) {
+        final TvPowerClient[] holder = new TvPowerClient[1];
+        try {
+            TvPowerClient next = new TvPowerClient(host, clientKey, toggle,
+                    (success, message, returnedKey, stateKnown, isOn, shouldWake) -> {
+                        if (!TextUtils.isEmpty(returnedKey)) {
+                            tvPreferences().edit().putString("tv_power_client_key", returnedKey).apply();
+                        }
+                        if (toggle && tvPowerToggleClient == holder[0]) tvPowerToggleClient = null;
+                        if (!toggle && tvPowerStateClient == holder[0]) tvPowerStateClient = null;
+                        if (toggle && shouldWake) {
+                            sendWakeOnLan(tvPreferences().getString("tv_mac", ""), callbackId);
+                            return;
+                        }
+                        if (toggle) {
+                            tvPowerTogglePending.set(false);
+                            postControllerTvPowerToggleResult(callbackId, success, message, stateKnown, isOn);
+                            return;
+                        }
+                        tvPowerStateCheckPending.set(false);
+                        if (tvPowerTogglePending.get()) {
+                            postControllerTvPowerState(callbackId, false, false);
+                            return;
+                        }
+                        if (success && stateKnown) {
+                            postControllerTvPowerState(callbackId, true, isOn);
+                        } else {
+                            network.execute(() -> postControllerTvPowerState(callbackId, true,
+                                    isTvSsapReachable(host)));
+                        }
+                    });
+            holder[0] = next;
+            if (toggle) tvPowerToggleClient = next;
+            else tvPowerStateClient = next;
+            Thread powerThread = new Thread(next::connect, "lg-tv-power-control");
+            powerThread.setDaemon(true);
+            powerThread.start();
+        } catch (Exception error) {
+            if (toggle && tvPowerToggleClient == holder[0]) tvPowerToggleClient = null;
+            if (!toggle && tvPowerStateClient == holder[0]) tvPowerStateClient = null;
+            if (toggle) {
+                tvPowerTogglePending.set(false);
+                String detail = TextUtils.isEmpty(error.getMessage())
+                        ? error.getClass().getSimpleName() : error.getMessage();
+                postControllerTvPowerToggleResult(callbackId, false,
+                        "無法準備電視電源控制（" + detail + "）。", false, false);
+            } else {
+                tvPowerStateCheckPending.set(false);
+                network.execute(() -> postControllerTvPowerState(callbackId, true,
+                        isTvSsapReachable(host)));
+            }
+        }
+    }
+
     private void sendWakeOnLan(String rawMac, String callbackId) {
         String mac = normalizeMac(rawMac);
         if (mac.isEmpty()) {
-            postControllerSettingsResult(callbackId, false, "請先設定有效的電視 MAC 位址。");
+            tvPowerTogglePending.set(false);
+            postControllerTvPowerToggleResult(callbackId, false,
+                    "未設定電視 MAC，無法送出喚醒訊號。請掃描電視 QR 或填入 MAC。", false, false);
             return;
         }
-        setControllerStatus("正在送出 Wi-Fi 喚醒訊號…");
         network.execute(() -> {
             try {
                 ConnectivityManager connectivity = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
@@ -1255,18 +1589,20 @@ public final class MainActivity extends Activity {
                 }
                 if (sent == 0) throw new IllegalStateException("沒有可用的 Wi-Fi 廣播位址。");
                 mainHandler.post(() -> {
-                    String message = "已送出 Wi-Fi 喚醒封包。請確認電視已開啟 Mobile TV On。";
+                    tvPowerTogglePending.set(false);
+                    String message = "已送出 Wi-Fi 喚醒封包；請確認電視已開啟 Mobile TV On。";
                     setControllerStatus(message);
                     Toast.makeText(this, "已送出電視喚醒訊號", Toast.LENGTH_SHORT).show();
-                    postControllerSettingsResult(callbackId, true, message);
+                    postControllerTvPowerToggleResult(callbackId, true, message, true, false);
                 });
             } catch (Exception error) {
                 String message = TextUtils.isEmpty(error.getMessage())
                         ? "Wi-Fi 喚醒訊號送出失敗。" : error.getMessage();
                 mainHandler.post(() -> {
+                    tvPowerTogglePending.set(false);
                     setControllerStatus(message);
                     Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-                    postControllerSettingsResult(callbackId, false, message);
+                    postControllerTvPowerToggleResult(callbackId, false, message, false, false);
                 });
             }
         });
@@ -1406,7 +1742,8 @@ public final class MainActivity extends Activity {
         String oldHost = tvPreferences().getString("tv_host", "");
         SharedPreferences.Editor editor = tvPreferences().edit().putString("tv_host", tvHost);
         if (!tvHost.equalsIgnoreCase(oldHost)) {
-            editor.remove("tv_client_key").remove("tv_audio_client_key").remove("tv_mac");
+                    editor.remove("tv_client_key").remove("tv_audio_client_key")
+                            .remove("tv_power_client_key").remove("tv_mac");
         }
         if (!tvMac.isEmpty()) editor.putString("tv_mac", tvMac);
         editor.apply();
@@ -1732,31 +2069,168 @@ public final class MainActivity extends Activity {
         synchronized (candidateHeaders) {
             candidateHeaders.clear();
         }
+        clearedMediaUrls.clear();
+        clearedCandidateHeaders.clear();
+        clearedSelectedMediaUrl = "";
+        selectedMediaUrl = "";
+        candidateSheetExpanded = false;
         candidateMetadataViews.clear();
         candidateRows.removeAllViews();
-        candidateRows.addView(emptyCandidates, matchWrap());
-        emptyCandidates.setText("尚未找到串流。請在網頁中按播放。");
         pageStatus.setText("正在開啟網頁…");
-        playbackInfo.setText("網頁解析度：等待播放器回報");
+        playbackInfo.setText("在網頁播放器按播放，自動偵測影片來源");
         pageLoaded = false;
         mainHandler.removeCallbacks(playbackInfoPoller);
+        updateCandidateSheet();
         showBrowserScreen();
         webView.loadUrl(url);
     }
 
     private void clearMediaCandidates() {
         synchronized (mediaUrls) {
+            if (mediaUrls.isEmpty()) return;
+            clearedMediaUrls.clear();
+            clearedMediaUrls.addAll(mediaUrls);
+            candidateGeneration++;
             mediaUrls.clear();
+        }
+        synchronized (candidateHeaders) {
+            clearedCandidateHeaders.clear();
+            for (Map.Entry<String, Map<String, String>> entry : candidateHeaders.entrySet()) {
+                clearedCandidateHeaders.put(entry.getKey(), new HashMap<>(entry.getValue()));
+            }
+            candidateHeaders.clear();
+        }
+        clearedSelectedMediaUrl = selectedMediaUrl;
+        selectedMediaUrl = "";
+        candidateMetadataViews.clear();
+        candidateRows.removeAllViews();
+        if (pageStatus != null) pageStatus.setText("來源清單已清空，可按「復原」還原");
+        updateCandidateSheet();
+    }
+
+    private void undoClearMediaCandidates() {
+        if (clearedMediaUrls.isEmpty()) return;
+        List<String> currentUrls;
+        synchronized (mediaUrls) {
+            currentUrls = new ArrayList<>(mediaUrls);
+            LinkedHashSet<String> restored = new LinkedHashSet<>(clearedMediaUrls);
+            restored.addAll(currentUrls);
+            mediaUrls.clear();
+            mediaUrls.addAll(restored);
             candidateGeneration++;
         }
         synchronized (candidateHeaders) {
+            Map<String, Map<String, String>> currentHeaders = new HashMap<>();
+            for (Map.Entry<String, Map<String, String>> entry : candidateHeaders.entrySet()) {
+                currentHeaders.put(entry.getKey(), new HashMap<>(entry.getValue()));
+            }
             candidateHeaders.clear();
+            for (Map.Entry<String, Map<String, String>> entry : clearedCandidateHeaders.entrySet()) {
+                candidateHeaders.put(entry.getKey(), new HashMap<>(entry.getValue()));
+            }
+            candidateHeaders.putAll(currentHeaders);
         }
+        boolean previousSelectionRestored;
+        synchronized (mediaUrls) {
+            previousSelectionRestored = !TextUtils.isEmpty(clearedSelectedMediaUrl)
+                    && mediaUrls.contains(clearedSelectedMediaUrl);
+        }
+        selectedMediaUrl = previousSelectionRestored ? clearedSelectedMediaUrl
+                : (currentUrls.isEmpty() ? "" : currentUrls.get(currentUrls.size() - 1));
+        clearedMediaUrls.clear();
+        clearedCandidateHeaders.clear();
+        clearedSelectedMediaUrl = "";
+        renderCandidateCards();
+        if (pageStatus != null) pageStatus.setText("已復原影片來源清單");
+    }
+
+    private void renderCandidateCards() {
         candidateMetadataViews.clear();
         candidateRows.removeAllViews();
-        candidateRows.addView(emptyCandidates, matchWrap());
-        emptyCandidates.setText("清單已清空。播放網頁中的影片可重新偵測。");
-        pageStatus.setText("已清空影片來源清單。");
+        List<String> ordered;
+        synchronized (mediaUrls) { ordered = new ArrayList<>(mediaUrls); }
+        for (int index = ordered.size() - 1; index >= 0; index--) {
+            String value = ordered.get(index);
+            candidateRows.addView(createCandidateCard(value));
+        }
+        updateCandidateSheet();
+    }
+
+    private View createCandidateCard(String value) {
+        boolean selected = value.equals(selectedMediaUrl);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12), dp(10), dp(12), dp(9));
+        card.setBackground(makeRoundedDrawable(selected ? Color.rgb(35, 58, 63) : Color.rgb(21, 31, 41),
+                dp(14), selected ? ACCENT : 0));
+        card.setClickable(true);
+        card.setFocusable(true);
+        card.setOnClickListener(view -> selectCandidate(value));
+
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView summary = new TextView(this);
+        summary.setText(candidateSummary(value));
+        summary.setTextColor(TEXT);
+        summary.setTextSize(14);
+        summary.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        summary.setSingleLine(true);
+        summary.setEllipsize(TextUtils.TruncateAt.END);
+        titleRow.addView(summary, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView selectionBadge = new TextView(this);
+        selectionBadge.setText(selected ? "已選取" : "選擇來源");
+        selectionBadge.setTextColor(selected ? ACCENT : MUTED);
+        selectionBadge.setTextSize(11);
+        titleRow.addView(selectionBadge, wrapParams());
+        card.addView(titleRow, matchWrap());
+
+        TextView source = new TextView(this);
+        source.setText(candidateSource(value));
+        source.setTextColor(MUTED);
+        source.setTextSize(12);
+        source.setSingleLine(true);
+        source.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        LinearLayout.LayoutParams sourceParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        sourceParams.topMargin = dp(3);
+        card.addView(source, sourceParams);
+
+        TextView metadata = new TextView(this);
+        metadata.setText("片長未知 · 尺寸未知 · 點預覽讀取");
+        metadata.setTextColor(MUTED);
+        metadata.setTextSize(11);
+        metadata.setSingleLine(true);
+        metadata.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams metadataParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        metadataParams.topMargin = dp(2);
+        card.addView(metadata, metadataParams);
+        candidateMetadataViews.put(value, metadata);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        TextView preview = sheetAction("預覽", () -> previewCandidate(value));
+        preview.setBackground(makeRoundedDrawable(Color.rgb(42, 59, 70), dp(11), 0));
+        LinearLayout.LayoutParams previewParams = wrapParams();
+        previewParams.topMargin = dp(7);
+        actions.addView(preview, previewParams);
+        card.addView(actions, matchWrap());
+
+        card.setTag(value);
+        LinearLayout.LayoutParams cardParams = matchWrap();
+        cardParams.bottomMargin = dp(7);
+        card.setLayoutParams(cardParams);
+        return card;
+    }
+
+    private void selectCandidate(String value) {
+        selectedMediaUrl = value;
+        renderCandidateCards();
+    }
+
+    private void addCandidateCard(String value) {
+        candidateRows.addView(createCandidateCard(value), 0);
+        updateCandidateSheet();
     }
 
     private boolean isMediaUrl(String value) {
@@ -1791,57 +2265,15 @@ public final class MainActivity extends Activity {
             synchronized (mediaUrls) {
                 if (generation != candidateGeneration || !mediaUrls.contains(value)) return;
             }
-            if (candidateRows.getChildCount() == 1 && candidateRows.getChildAt(0) == emptyCandidates) {
-                candidateRows.removeAllViews();
-            }
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(0, dp(3), 0, dp(3));
-            LinearLayout details = new LinearLayout(this);
-            details.setOrientation(LinearLayout.VERTICAL);
-            details.setGravity(Gravity.CENTER_VERTICAL);
-            TextView summary = new TextView(this);
-            summary.setText(candidateSummary(value));
-            summary.setTextColor(TEXT);
-            summary.setTextSize(12);
-            summary.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-            summary.setSingleLine(true);
-            summary.setEllipsize(TextUtils.TruncateAt.END);
-            details.addView(summary, matchWrap());
-            TextView source = new TextView(this);
-            source.setText(candidateSource(value));
-            source.setTextColor(MUTED);
-            source.setTextSize(10);
-            source.setSingleLine(true);
-            source.setEllipsize(TextUtils.TruncateAt.MIDDLE);
-            details.addView(source, matchWrap());
-            TextView metadata = new TextView(this);
-            metadata.setText("時長／尺寸：點「預覽」讀取");
-            metadata.setTextColor(MUTED);
-            metadata.setTextSize(9);
-            metadata.setSingleLine(true);
-            metadata.setEllipsize(TextUtils.TruncateAt.END);
-            details.addView(metadata, matchWrap());
-            candidateMetadataViews.put(value, metadata);
-            row.addView(details, new LinearLayout.LayoutParams(0, dp(58), 1f));
-            Button preview = new Button(this);
-            preview.setText("預覽");
-            preview.setTextSize(11);
-            preview.setMinWidth(dp(56));
-            preview.setPadding(dp(2), 0, dp(2), 0);
-            preview.setOnClickListener(view -> previewCandidate(value));
-            row.addView(preview, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
-            Button send = new Button(this);
-            send.setText("送電視");
-            send.setTextSize(11);
-            send.setMinWidth(dp(70));
-            send.setPadding(dp(2), 0, dp(2), 0);
-            send.setOnClickListener(view -> sendToTv(value));
-            row.addView(send, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
-            candidateRows.addView(row, 0, matchWrap());
+            if (TextUtils.isEmpty(selectedMediaUrl)) selectedMediaUrl = value;
+            addCandidateCard(value);
+            String currentUrl = webView == null ? "" : webView.getUrl();
+            pageStatus.setText("已開啟 " + readableHost(currentUrl) + " · 找到 " + mediaCandidateCount() + " 個來源");
         });
+    }
+
+    private int mediaCandidateCount() {
+        synchronized (mediaUrls) { return mediaUrls.size(); }
     }
 
     private boolean containsHeader(Map<String, String> headers, String key) {
@@ -1850,6 +2282,8 @@ public final class MainActivity extends Activity {
     }
 
     private void previewCandidate(String mediaUrl) {
+        selectedMediaUrl = mediaUrl;
+        renderCandidateCards();
         Dialog dialog = new Dialog(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -2067,15 +2501,13 @@ public final class MainActivity extends Activity {
         else format = "MOV";
         Matcher quality = QUALITY_HINT.matcher(value);
         if (quality.find()) return format + " · 網址標示 " + quality.group().replaceAll("\\s*[x×]\\s*", "×");
-        return format + " · 解析度未標示";
+        return format + " · 畫質未標示";
     }
 
     private String candidateSource(String value) {
         Uri uri = Uri.parse(value);
-        String host = uri.getHost() == null ? "未知網域" : uri.getHost();
-        String path = uri.getLastPathSegment();
-        if (TextUtils.isEmpty(path)) return host;
-        return host + " · " + path;
+        String host = uri.getHost() == null ? "未知網站" : uri.getHost();
+        return "來源網站 · " + host;
     }
 
     private void inspectPageVideoDimensions() {
@@ -2095,14 +2527,19 @@ public final class MainActivity extends Activity {
     }
 
     private void sendToTv(String mediaUrl) {
-        pageStatus.setText("正在把串流網址傳給電視…");
+        if (TextUtils.isEmpty(mediaUrl)) {
+            pageStatus.setText("請先選擇影片來源");
+            return;
+        }
+        pageStatus.setText("正在傳送影片來源到電視…");
         JSONObject payload = new JSONObject();
         try { payload.put("mediaUrl", mediaUrl); }
         catch (Exception error) {
-            pageStatus.setText("無法建立影片啟動資料。");
+            pageStatus.setText("無法準備影片播放資料");
             return;
         }
-        launchToTv(payload, (success, message) -> pageStatus.setText(success ? message : "傳送失敗：" + message));
+        launchToTv(payload, (success, message) -> pageStatus.setText(success
+                ? "已傳送給電視 · " + message : "投放失敗 · " + message));
     }
 
     private String readBody(InputStream input) throws Exception {
@@ -2126,6 +2563,10 @@ public final class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         if (browserRoot != null && browserRoot.getVisibility() == View.VISIBLE) {
+            if (candidateSheetExpanded) {
+                setCandidateSheetExpanded(false);
+                return;
+            }
             if (mediaPopupWebView != null) {
                 disposeMediaPopup(mediaPopupWebView);
                 return;
@@ -2180,6 +2621,12 @@ public final class MainActivity extends Activity {
         TvPointerClient activePointer = pointerClient;
         pointerClient = null;
         if (activePointer != null) activePointer.close();
+        TvPowerClient activePowerStateClient = tvPowerStateClient;
+        tvPowerStateClient = null;
+        if (activePowerStateClient != null) activePowerStateClient.close();
+        TvPowerClient activePowerToggleClient = tvPowerToggleClient;
+        tvPowerToggleClient = null;
+        if (activePowerToggleClient != null) activePowerToggleClient.close();
         stopTvAudioClient();
         network.shutdownNow();
         tvAppInstallerExecutor.shutdownNow();

@@ -28,10 +28,19 @@
     .header-copy { min-width: 0; flex: 1; }
     .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .settings-button { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #3a4655; border-radius: 13px; color: #eaf0f6; background: #1a222d; font-size: 20px; }
+    .power-button { display: flex; min-width: 82px; height: 44px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; border: 0; border-radius: 999px; color: #fff; background: #e53935; box-shadow: 0 4px 13px #e5393540; font-size: 12px; font-weight: 800; -webkit-tap-highlight-color: transparent; }
+    .power-button:active { background: #c62828; transform: scale(.96); }
+    .power-button:focus { outline: none; }
+    .power-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .power-button:disabled { cursor: wait; opacity: .65; }
+    .power-button svg { width: 21px; height: 21px; flex: 0 0 auto; }
+    .power-feedback { margin: 0 0 10px; padding: 9px 11px; border: 1px solid #4b3940; border-radius: 11px; color: #f1c8c8; background: #2a1b20; font-size: 12px; line-height: 1.45; }
+    .power-feedback[hidden] { display: none; }
     .card { margin: 10px 0; padding: 14px; border: 1px solid #313d4b; border-radius: 16px; background: rgba(26, 34, 45, .96); box-shadow: 0 8px 20px #0002; }
     .card h2 { margin: 0 0 10px; font-size: 17px; }
     .muted { color: var(--muted); font-size: 13px; line-height: 1.55; }
     .connection { position: sticky; top: calc(env(safe-area-inset-top) + 2px); z-index: 15; display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; min-height: 46px; margin: 0 0 10px; padding: 7px 9px; border: 1px solid #313d4b; border-radius: 13px; background: rgba(26, 34, 45, .96); backdrop-filter: blur(12px); }
+    .connection[hidden] { display: none; }
     .dot { grid-column: 1; grid-row: 1 / span 2; width: 10px; height: 10px; border-radius: 50%; background: #777; box-shadow: 0 0 0 4px #ffffff0d; }
     .dot.online { background: #77dfaf; box-shadow: 0 0 12px #77dfaf66; }
     .connection-copy { grid-column: 2; display: grid; min-width: 0; gap: 2px; }
@@ -59,7 +68,7 @@
     .key-transfer-row input { min-width: 0; min-height: 50px; border: 1px solid #3a4655; border-radius: 11px; padding: 11px 12px; color: #fff; background: #0e1319; font-size: 16px; }
     .key-transfer-row button { min-height: 50px; padding: 10px 12px; border: 1px solid #465360; border-radius: 10px; color: #e7edf4; background: #28313c; }
     .key-transfer-form > .action-button { width: 100%; }
-    .tv-settings-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .tv-settings-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
     .address-list { margin: 10px 0; display: grid; gap: 8px; }
     .address-chip { display: block; overflow-wrap: anywhere; padding: 10px 12px; border-radius: 10px; background: #10151c; color: var(--accent); font-size: 14px; }
     .code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
@@ -119,19 +128,57 @@
     .recent-site-remove { min-height: 40px; border: 0; color: var(--muted); background: transparent; font-size: 16px; }
     .recent-empty { color: var(--muted); font-size: 12px; }
     .site-save-panel { margin-top: 12px; }
-    .remote-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .remote-heading h2 { margin: 0; }
-    .remote-heading .action-button { min-height: 42px; padding: 8px 13px; white-space: nowrap; }
-    .touchpad { display: flex; min-height: min(42vh, 300px); margin: 12px 0 9px; padding: 16px; flex-direction: column; align-items: center; justify-content: center; gap: 7px; border: 1px solid #465360; border-radius: 20px; color: #e5edf4; background: linear-gradient(145deg, #202d39, #131a23); box-shadow: inset 0 1px #ffffff0a, 0 8px 24px #0003; text-align: center; touch-action: none; user-select: none; -webkit-user-select: none; }
-    .touchpad:active { border-color: var(--accent); background: linear-gradient(145deg, #263a42, #17212a); }
-    .touchpad-icon { display: grid; width: 54px; height: 54px; margin-bottom: 3px; place-items: center; border: 1px solid #526373; border-radius: 18px; color: var(--accent); font-size: 26px; }
-    .touchpad strong { font-size: 17px; }
-    .touchpad span:last-child { color: var(--muted); font-size: 13px; line-height: 1.5; }
-    .remote-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 9px; }
-    .remote-actions .action-button { min-height: 54px; }
-    .volume-actions { grid-template-columns: 1fr 1fr; margin-top: 8px; }
-    .volume-actions .action-button { min-height: 58px; font-size: 16px; }
-    .keyboard-tools { margin-top: 16px; border: 1px solid #313d4b; border-radius: 14px; background: #151c25; }
+    .remote-console { margin: 10px 0; padding: 17px; overflow: hidden; border: 1px solid #303030; border-radius: 26px; background: #202020; box-shadow: 0 12px 28px #0004; }
+    .remote-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+    .remote-heading h2 { margin: 0; font-size: 19px; }
+    .remote-heading p { margin: 4px 0 0; color: #a2a2a2; font-size: 12px; line-height: 1.4; }
+    .remote-heading .action-button { min-height: 40px; padding: 8px 13px; border: 1px solid #454545; border-radius: 999px; color: #f2f2f2; background: #111; font-size: 12px; white-space: nowrap; }
+    .remote-heading .action-button:disabled { color: #d5d5d5; opacity: 1; }
+    .remote-state { display: flex; min-height: 24px; align-items: center; gap: 8px; margin: 0 2px 12px; }
+    .remote-state-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #888; }
+    .remote-state-dot.online { background: #79d9a5; box-shadow: 0 0 10px #79d9a566; }
+    .remote-state-dot.connecting { background: #f0c86c; }
+    .remote-state .status { min-height: 0; margin: 0; color: #b7b7b7; font-size: 12px; line-height: 1.4; }
+    .remote-volume-control { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 10px; }
+    .remote-volume-button { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 17px; border: 0; border-radius: 22px; color: #f7f7f7; background: #414244; font-weight: 700; -webkit-tap-highlight-color: transparent; }
+    .remote-volume-button:focus { outline: none; }
+    .remote-volume-button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+    .remote-volume-button:active { background: #535456; }
+    .remote-volume-button .volume-sign { font-size: 25px; font-weight: 400; line-height: 1; }
+    .remote-volume-button .volume-label { font-size: 13px; }
+    .remote-volume-button:disabled { opacity: .42; }
+    .volume-status { min-height: 17px; margin: 3px 3px 7px; color: #aaa; font-size: 11px; line-height: 1.4; text-align: center; }
+    .remote-control-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 12px 0 0; padding: 4px; border: 1px solid #30383f; border-radius: 13px; background: #111; }
+    .remote-control-tab { min-height: 44px; border: 0; border-radius: 10px; color: #b9b9b9; background: transparent; font-size: 14px; font-weight: 700; -webkit-tap-highlight-color: transparent; }
+    .remote-control-tab[aria-selected="true"] { color: #171717; background: #d7d7d7; }
+    .remote-control-tab:focus { outline: none; }
+    .remote-control-tab:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .remote-control-panel[hidden] { display: none; }
+    .touchpad { display: flex; position: relative; min-height: clamp(270px, 39vh, 450px); margin: 11px 0 12px; padding: 19px; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 7px; border: 1px solid #2a2a2a; border-radius: 25px; color: #d5d5d5; background: #151515; box-shadow: inset 0 1px #ffffff06; text-align: left; touch-action: none; user-select: none; -webkit-user-select: none; }
+    .touchpad:active { border-color: #555; background: #181818; }
+    .touchpad-label { color: #bcbcbc; font-size: 13px; font-weight: 700; }
+    .touchpad-hint { max-width: calc(100% - 42px); color: #858585; font-size: 11px; line-height: 1.5; }
+    .touchpad-scroll-rail { position: absolute; display: grid; place-items: center; pointer-events: none; color: #aaa; }
+    .touchpad-scroll-rail.vertical { top: 48px; right: 8px; bottom: 38px; width: 26px; border-radius: 15px; background: #28282a; }
+    .touchpad-scroll-rail.horizontal { right: 43px; bottom: 8px; left: 24px; height: 22px; border-radius: 13px; background: #28282a; }
+    .touchpad-scroll-thumb { display: grid; place-items: center; border-radius: 9px; color: #bcbcbc; background: #111; font-size: 12px; line-height: 1; }
+    .touchpad-scroll-rail.vertical .touchpad-scroll-thumb { width: 17px; height: 42px; }
+    .touchpad-scroll-rail.horizontal .touchpad-scroll-thumb { width: 42px; height: 14px; }
+    .remote-nav { margin: 14px 0 2px; }
+    .remote-nav-heading { margin: 0 2px 8px; color: #c9c9c9; font-size: 13px; font-weight: 700; text-align: center; }
+    .direction-pad { display: grid; grid-template: repeat(3, 56px) / repeat(3, 64px); justify-content: center; gap: 6px; margin: 0 auto; }
+    .direction-key { display: grid; min-width: 0; min-height: 56px; place-items: center; padding: 0; border: 0; border-radius: 17px; color: #f5f5f5; background: #414244; font-size: 25px; line-height: 1; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .direction-key:active { background: #595a5c; transform: scale(.96); }
+    .direction-key:focus { outline: none; }
+    .direction-key:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .direction-key:disabled { opacity: .42; }
+    .direction-key.select-key { border: 1px solid #555; border-radius: 50%; background: #292a2c; font-size: 12px; font-weight: 800; }
+    .direction-key.select-key:active { background: #4b4c4e; }
+    .remote-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .remote-primary-actions .action-button { min-height: 70px; border-radius: 999px; color: #f5f5f5; background: #08090b; font-size: 15px; }
+    .remote-primary-actions .action-button:active { background: #252525; }
+    .remote-primary-actions .action-button:disabled { opacity: .42; }
+    .keyboard-tools { margin-top: 15px; border: 1px solid #313d4b; border-radius: 14px; background: #151c25; }
     .keyboard-tools summary { min-height: 48px; padding: 14px; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
     .keyboard-tools[open] { padding-bottom: 12px; }
     .keyboard-tools[open] > :not(summary) { margin-right: 12px; margin-left: 12px; }
@@ -151,8 +198,8 @@
     .dialog-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
     .dialog-close { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 1px solid #394654; border-radius: 12px; color: #edf2f7; background: #202a36; font-size: 21px; }
     .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-    @media (max-width: 380px) { .page { padding-right: 13px; padding-left: 13px; } .card { padding: 12px; } .code-row { flex-wrap: wrap; } .connection { column-gap: 8px; padding-right: 8px; padding-left: 9px; } .connection-action { min-width: 76px; max-width: 108px; padding-right: 7px; padding-left: 7px; font-size: 11px; } .tabs { padding-right: 8px; padding-left: 8px; } }
-    @media (max-height: 520px) and (orientation: landscape) { .touchpad { min-height: 190px; } .tabs { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); } .tab-button { min-height: 46px; } }
+    @media (max-width: 380px) { .page { padding-right: 13px; padding-left: 13px; } .card { padding: 12px; } .remote-console { padding: 14px; border-radius: 23px; } .remote-volume-button { padding-right: 13px; padding-left: 13px; } .code-row { flex-wrap: wrap; } .connection { column-gap: 8px; padding-right: 8px; padding-left: 9px; } .connection-action { min-width: 76px; max-width: 108px; padding-right: 7px; padding-left: 7px; font-size: 11px; } .tabs { padding-right: 8px; padding-left: 8px; } }
+    @media (max-height: 520px) and (orientation: landscape) { .touchpad { min-height: 190px; } .remote-console { padding: 12px; } .remote-volume-button { min-height: 54px; } .remote-primary-actions .action-button { min-height: 52px; } .direction-pad { grid-template-rows: repeat(3, 48px); } .direction-key { min-height: 48px; } .tabs { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); } .tab-button { min-height: 46px; } }
   </style>
 </head>
 <body>
@@ -164,8 +211,13 @@
       </div>
       <div class="header-actions">
         <button class="settings-button" id="settingsButton" type="button" aria-label="設定與連線資訊" title="設定">⚙</button>
+        <button class="power-button" id="tvPowerButton" type="button" aria-label="正在讀取電視狀態" title="正在讀取電視狀態">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10"/><path d="M6.2 5.4a8 8 0 1 0 11.6 0"/></svg>
+          <span id="tvPowerLabel">電源</span>
+        </button>
       </div>
     </header>
+    <p class="power-feedback" id="tvPowerFeedback" role="status" aria-live="polite" hidden></p>
 
     <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
       <div class="dialog-heading">
@@ -188,9 +240,8 @@
         </form>
         <div class="tv-settings-actions">
           <button class="action-button" id="scanTvSettingsButton" type="button">掃描電視 QR</button>
-          <button class="action-button" id="wakeTvButton" type="button">Wi-Fi 喚醒電視</button>
         </div>
-        <p class="muted">Wi-Fi 喚醒需要電視已接電源，並開啟「一般 → Mobile TV On → Turn on via Wi-Fi」。</p>
+        <p class="muted">右上角紅色電源鍵會先讀取電視狀態：電視開機時送出關機指令，待機或無法連線時送出 Wi-Fi 喚醒訊號。首次使用關機功能時，請在電視允許電源控制。喚醒需要電視已接電源，並開啟「一般 → Mobile TV On → Turn on via Wi-Fi」。</p>
         <form class="key-transfer-form" id="tvMacForm">
           <label for="tvMacInput">Wi-Fi 喚醒 MAC（QR 未提供時才需填）
             <span class="key-transfer-row">
@@ -248,7 +299,7 @@
       </details>
     </dialog>
 
-    <section class="connection" id="connection" aria-live="polite">
+    <section class="connection" id="connection" aria-live="polite" hidden>
       <span class="dot" id="connectionDot"></span>
       <div class="connection-copy">
         <span id="connectionText">正在連線…</span>
@@ -258,12 +309,12 @@
     </section>
 
     <nav class="tabs" role="tablist" aria-label="電視控制功能">
-      <button class="tab-button" type="button" role="tab" id="tabAi" aria-controls="panelAi" aria-selected="true" data-panel="panelAi"><span class="tab-icon" aria-hidden="true">✦</span><span>AI 對話</span></button>
+      <button class="tab-button" type="button" role="tab" id="tabRemote" aria-controls="panelRemote" aria-selected="true" data-panel="panelRemote"><span class="tab-icon" aria-hidden="true">⌖</span><span>遙控器</span></button>
       <button class="tab-button" type="button" role="tab" id="tabWeb" aria-controls="panelWeb" aria-selected="false" data-panel="panelWeb"><span class="tab-icon" aria-hidden="true">↗</span><span>網站／影片</span></button>
-      <button class="tab-button" type="button" role="tab" id="tabRemote" aria-controls="panelRemote" aria-selected="false" data-panel="panelRemote"><span class="tab-icon" aria-hidden="true">⌖</span><span>遙控器</span></button>
+      <button class="tab-button" type="button" role="tab" id="tabAi" aria-controls="panelAi" aria-selected="false" data-panel="panelAi"><span class="tab-icon" aria-hidden="true">✦</span><span>AI 對話</span></button>
     </nav>
 
-    <section class="tab-panel" id="panelAi" role="tabpanel" aria-labelledby="tabAi">
+    <section class="tab-panel" id="panelAi" role="tabpanel" aria-labelledby="tabAi" hidden>
       <div class="panel-heading">
         <div>
           <h2>AI 對話</h2>
@@ -333,28 +384,56 @@
       </section>
     </section>
 
-    <section class="tab-panel" id="panelRemote" role="tabpanel" aria-labelledby="tabRemote" hidden>
-      <section class="card" aria-labelledby="remoteTitle">
+    <section class="tab-panel" id="panelRemote" role="tabpanel" aria-labelledby="tabRemote">
+      <section class="remote-console" aria-labelledby="remoteTitle">
         <div class="remote-heading">
-          <h2 id="remoteTitle">觸控板</h2>
-          <button class="action-button" id="pointerConnectButton" type="button" disabled>連線觸控板</button>
+          <div>
+            <h2 id="remoteTitle">遙控器</h2>
+            <p>進入時自動連線・中斷後重試・不啟動電視 App</p>
+          </div>
+          <button class="action-button" id="pointerConnectButton" type="button" disabled>連線遙控器</button>
         </div>
-        <div class="touchpad" id="touchpad" role="button" tabindex="0" aria-label="電視觸控板，滑動移動游標，點一下確認">
-          <span class="touchpad-icon" aria-hidden="true">⌖</span>
-          <strong>觸控移動游標</strong>
-          <span>滑動移動・點一下選取・雙指捲動</span>
+        <div class="remote-state" aria-live="polite">
+          <span class="remote-state-dot" id="remoteStateDot" aria-hidden="true"></span>
+          <p class="status" id="pointerStatus" role="status">已配對的電視會在進入遙控頁時自動連線。</p>
         </div>
-        <div class="remote-actions">
+        <div class="remote-volume-control" role="group" aria-label="電視音量控制">
+          <button class="remote-volume-button" type="button" data-tv-volume="down" aria-label="降低電視音量" disabled><span class="volume-sign" aria-hidden="true">−</span><span class="volume-label">音量</span></button>
+          <button class="remote-volume-button" type="button" data-tv-volume="up" aria-label="提高電視音量" disabled><span class="volume-label">音量</span><span class="volume-sign" aria-hidden="true">＋</span></button>
+        </div>
+        <p class="volume-status" id="volumeStatus" role="status" aria-live="polite">第一次使用時，若電視出現音量控制授權提示，請按允許。</p>
+        <div class="remote-control-tabs" id="remoteControlTabs" role="tablist" aria-label="遙控方式">
+          <button class="remote-control-tab" id="remoteDirectionTab" type="button" role="tab" aria-selected="true" aria-controls="remoteDirectionPanel" tabindex="0">方向鍵</button>
+          <button class="remote-control-tab" id="remoteTouchpadTab" type="button" role="tab" aria-selected="false" aria-controls="remoteTouchpadPanel" tabindex="-1">觸控板</button>
+        </div>
+        <section class="remote-control-panel" id="remoteDirectionPanel" role="tabpanel" aria-labelledby="remoteDirectionTab">
+          <div class="remote-nav" aria-labelledby="remoteNavTitle">
+            <h3 class="remote-nav-heading" id="remoteNavTitle">移動電視焦點</h3>
+            <div class="direction-pad" role="group" aria-label="電視方向鍵與選取">
+              <span aria-hidden="true"></span>
+              <button class="direction-key" type="button" data-pointer-button="UP" aria-label="上" disabled>↑</button>
+              <span aria-hidden="true"></span>
+              <button class="direction-key" type="button" data-pointer-button="LEFT" aria-label="左" disabled>←</button>
+              <button class="direction-key select-key" type="button" id="remoteSelectButton" aria-label="選取" disabled>OK</button>
+              <button class="direction-key" type="button" data-pointer-button="RIGHT" aria-label="右" disabled>→</button>
+              <span aria-hidden="true"></span>
+              <button class="direction-key" type="button" data-pointer-button="DOWN" aria-label="下" disabled>↓</button>
+              <span aria-hidden="true"></span>
+            </div>
+          </div>
+        </section>
+        <section class="remote-control-panel" id="remoteTouchpadPanel" role="tabpanel" aria-labelledby="remoteTouchpadTab" hidden>
+          <div class="touchpad" id="touchpad" role="button" tabindex="0" aria-label="電視觸控板：中央拖曳移動游標，右側邊緣上下拖曳捲動，底部邊緣左右拖曳捲動，點按選取">
+            <span class="touchpad-label">觸控板</span>
+            <span class="touchpad-hint">中央拖曳移動游標・右側上下捲動・底部左右捲動</span>
+            <span class="touchpad-scroll-rail vertical" aria-hidden="true"><span class="touchpad-scroll-thumb">⋮</span></span>
+            <span class="touchpad-scroll-rail horizontal" aria-hidden="true"><span class="touchpad-scroll-thumb">⋯</span></span>
+          </div>
+        </section>
+        <div class="remote-actions remote-primary-actions" aria-label="電視基本按鍵">
           <button class="action-button" type="button" data-pointer-button="BACK" disabled>返回</button>
           <button class="action-button" type="button" data-pointer-button="HOME" disabled>首頁</button>
-          <button class="action-button" id="pointerSelectButton" type="button" disabled>選取</button>
         </div>
-        <div class="remote-actions volume-actions" aria-label="電視音量控制">
-          <button class="action-button" type="button" data-tv-volume="down" aria-label="降低電視音量" disabled>音量 −</button>
-          <button class="action-button" type="button" data-tv-volume="up" aria-label="提高電視音量" disabled>音量 +</button>
-        </div>
-        <p class="status" id="volumeStatus" role="status" aria-live="polite">第一次使用時，若電視出現音量控制授權提示，請按允許。</p>
-        <p class="status" id="pointerStatus" role="status">第一次使用時，請在電視允許手機控制。</p>
         <details class="keyboard-tools">
           <summary>手機打字到電視</summary>
           <p class="muted">先用觸控板選取電視上的文字欄位，再於手機輸入。</p>
@@ -407,11 +486,13 @@
       var pointerLastPoint = null;
       var pointerTouchMoved = false;
       var pointerTouchMulti = false;
+      var pointerGestureMode = 'pointer';
       var AUDIO_SAMPLE_RATE = 16000;
       var AUDIO_CHUNK_SAMPLES = 640;
 
       var addressList = document.getElementById('addressList');
       var pairCode = document.getElementById('pairCode');
+      var appConnectionPanel = document.getElementById('connection');
       var connectionDot = document.getElementById('connectionDot');
       var connectionText = document.getElementById('connectionText');
       var connectionDetail = document.getElementById('connectionDetail');
@@ -464,10 +545,22 @@
       var tvMacForm = document.getElementById('tvMacForm');
       var tvMacInput = document.getElementById('tvMacInput');
       var tvSettingsStatus = document.getElementById('tvSettingsStatus');
+      var tvPowerButton = document.getElementById('tvPowerButton');
+      var tvPowerLabel = document.getElementById('tvPowerLabel');
+      var tvPowerFeedback = document.getElementById('tvPowerFeedback');
+      var tvPowerStateRequestId = null;
+      var tvPowerToggleRequestId = null;
+      var tvPowerPollTimer = null;
       var pointerConnectButton = document.getElementById('pointerConnectButton');
-      var pointerSelectButton = document.getElementById('pointerSelectButton');
       var pointerStatus = document.getElementById('pointerStatus');
+      var remoteStateDot = document.getElementById('remoteStateDot');
       var touchpad = document.getElementById('touchpad');
+      var remoteSelectButton = document.getElementById('remoteSelectButton');
+      var remoteControlTabs = document.getElementById('remoteControlTabs');
+      var remoteDirectionTab = document.getElementById('remoteDirectionTab');
+      var remoteTouchpadTab = document.getElementById('remoteTouchpadTab');
+      var remoteDirectionPanel = document.getElementById('remoteDirectionPanel');
+      var remoteTouchpadPanel = document.getElementById('remoteTouchpadPanel');
       var remoteTextInput = document.getElementById('remoteTextInput');
       var sendRemoteTextButton = document.getElementById('sendRemoteTextButton');
       var sendRemoteEnterButton = document.getElementById('sendRemoteEnterButton');
@@ -483,7 +576,7 @@
         var connected = phoneOnline && tvOnline;
         connectionDot.classList.toggle('online', connected);
         var needsPairing = !!(config && !config.tvConfigured);
-        connectionText.textContent = !phoneOnline ? '正在連線…' : tvOnline ? '電視已連線' : needsPairing ? '準備配對電視' : '尚未連上電視';
+        connectionText.textContent = !phoneOnline ? '正在連線…' : tvOnline ? '電視 App 已連線' : needsPairing ? '準備配對電視' : '電視 App 尚未連線';
         if (tvOnline) connectionFeedback = '';
         else if (!phoneOnline) connectionFeedback = '';
         connectionDetail.textContent = connectionFeedback || (phoneOnline && needsPairing
@@ -503,11 +596,14 @@
         quickResolveButton.disabled = !phoneOnline || !launchUrlInput.value.trim() || launchInProgress;
         voiceButton.disabled = !connected || !audioSupported || (audioState !== 'idle' && audioState !== 'recording');
         pointerConnectButton.disabled = !config || !config.tvConfigured || pointerConnecting || pointerConnected;
-        pointerConnectButton.textContent = pointerConnected ? '已連線' : pointerConnecting ? '連線中…' : pointerWasConnected ? '重新連線' : '連線觸控板';
-        pointerSelectButton.disabled = !pointerConnected;
+        pointerConnectButton.textContent = pointerConnected ? '已連線' : pointerConnecting ? '連線中…'
+          : !config || !config.tvConfigured ? '尚未配對' : pointerWasConnected ? '重新連線' : '連線遙控器';
+        remoteStateDot.classList.toggle('online', pointerConnected);
+        remoteStateDot.classList.toggle('connecting', pointerConnecting && !pointerConnected);
         Array.prototype.forEach.call(document.querySelectorAll('[data-pointer-button]'), function (button) {
           button.disabled = !pointerConnected;
         });
+        remoteSelectButton.disabled = !pointerConnected;
         Array.prototype.forEach.call(document.querySelectorAll('[data-tv-volume]'), function (button) {
           button.disabled = !config || !config.tvConfigured || volumeRequestPending;
         });
@@ -713,8 +809,46 @@
         saveNativeSetting('saveTvMac', tvMacInput.value.trim(), tvSettingsStatus);
       }
 
-      function wakeTv() {
-        saveNativeSetting('wakeTv', '', tvSettingsStatus);
+      function updateTvPowerPresentation(known, isOn) {
+        if (!known) {
+          tvPowerLabel.textContent = '電源';
+          tvPowerButton.setAttribute('aria-label', '電視電源狀態未知');
+          tvPowerButton.title = '電視電源狀態未知；點擊後會自動判斷';
+          return;
+        }
+        tvPowerLabel.textContent = isOn ? '關機' : '開機';
+        tvPowerButton.setAttribute('aria-label', isOn ? '關閉電視' : '喚醒電視');
+        tvPowerButton.title = isOn ? '電視已開機，點擊關機' : '電視待機，點擊喚醒';
+      }
+
+      function refreshTvPowerState() {
+        if (document.hidden || tvPowerStateRequestId || !window.AndroidBridge
+            || typeof window.AndroidBridge.getTvPowerState !== 'function') return;
+        tvPowerStateRequestId = makeId();
+        try { window.AndroidBridge.getTvPowerState(tvPowerStateRequestId); }
+        catch (error) {
+          tvPowerStateRequestId = null;
+          updateTvPowerPresentation(false, false);
+        }
+      }
+
+      function toggleTvPower() {
+        if (tvPowerToggleRequestId) return;
+        if (!window.AndroidBridge || typeof window.AndroidBridge.toggleTvPower !== 'function') {
+          tvPowerFeedback.hidden = false;
+          tvPowerFeedback.textContent = '請重新開啟 Companion App 後重試。';
+          return;
+        }
+        tvPowerToggleRequestId = makeId();
+        tvPowerButton.disabled = true;
+        tvPowerFeedback.hidden = false;
+        tvPowerFeedback.textContent = '正在確認電視狀態…';
+        try { window.AndroidBridge.toggleTvPower(tvPowerToggleRequestId); }
+        catch (error) {
+          tvPowerToggleRequestId = null;
+          tvPowerButton.disabled = false;
+          tvPowerFeedback.textContent = error && error.message ? error.message : '電視電源操作失敗。';
+        }
       }
 
       function saveNativeSetting(method, value, target) {
@@ -725,9 +859,8 @@
         var id = makeId();
         pendingNativeSettings[id] = target;
         try {
-          if (method === 'wakeTv') window.AndroidBridge[method](id);
-          else window.AndroidBridge[method](value, id);
-          target.textContent = method === 'wakeTv' ? '正在送出喚醒訊號…' : '正在儲存…';
+          window.AndroidBridge[method](value, id);
+          target.textContent = '正在儲存…';
         } catch (error) {
           delete pendingNativeSettings[id];
           target.textContent = error && error.message ? error.message : '操作失敗，請重試。';
@@ -829,19 +962,45 @@
         return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 };
       }
 
+      function setRemoteControlTab(mode, moveFocus) {
+        var directionActive = mode !== 'touchpad';
+        var activeTab = directionActive ? remoteDirectionTab : remoteTouchpadTab;
+        remoteDirectionTab.setAttribute('aria-selected', String(directionActive));
+        remoteDirectionTab.tabIndex = directionActive ? 0 : -1;
+        remoteTouchpadTab.setAttribute('aria-selected', String(!directionActive));
+        remoteTouchpadTab.tabIndex = directionActive ? -1 : 0;
+        remoteDirectionPanel.hidden = !directionActive;
+        remoteTouchpadPanel.hidden = directionActive;
+        if (moveFocus) activeTab.focus();
+      }
+
+      function touchGestureModeAt(point) {
+        var rect = touchpad.getBoundingClientRect();
+        var rightDistance = rect.right - point.x;
+        var bottomDistance = rect.bottom - point.y;
+        var inVerticalRail = rightDistance <= 36 && point.y < rect.bottom - 40 && point.y > rect.top + 42;
+        var inHorizontalRail = bottomDistance <= 32 && point.x < rect.right - 40 && point.x > rect.left + 18;
+        if (inVerticalRail && (!inHorizontalRail || rightDistance <= bottomDistance)) return 'scroll-y';
+        if (inHorizontalRail) return 'scroll-x';
+        return 'pointer';
+      }
+
       touchpad.addEventListener('touchstart', function (event) {
         event.preventDefault();
         var now = Date.now();
         if (event.touches.length > 1) {
+          pointerGestureMode = 'scroll-both';
           pointerTouchMulti = true;
           pointerTouchMoved = true;
           pointerTouchStart = pointerTouchStart || { time: now, count: event.touches.length };
           pointerLastPoint = midpointOfTouches(event.touches);
         } else if (event.touches.length === 1) {
-          pointerTouchStart = { time: now, count: 1, point: pointFromTouch(event.touches[0]) };
-          pointerLastPoint = pointFromTouch(event.touches[0]);
+          var startPoint = pointFromTouch(event.touches[0]);
+          pointerGestureMode = touchGestureModeAt(startPoint);
+          pointerTouchStart = { time: now, count: 1, point: startPoint };
+          pointerLastPoint = startPoint;
           pointerTouchMoved = false;
-          pointerTouchMulti = false;
+          pointerTouchMulti = pointerGestureMode !== 'pointer';
         }
       }, { passive: false });
 
@@ -855,7 +1014,14 @@
         var dy = current.y - pointerLastPoint.y;
         if (Math.abs(dx) + Math.abs(dy) > 2) pointerTouchMoved = true;
         if (event.touches.length > 1) {
+          pointerGestureMode = 'scroll-both';
           pointerTouchMulti = true;
+          callPointer('pointerScroll', [Math.round(dx * 1.4), Math.round(dy * 1.4)]);
+        } else if (pointerGestureMode === 'scroll-y') {
+          callPointer('pointerScroll', [0, Math.round(dy * 1.4)]);
+        } else if (pointerGestureMode === 'scroll-x') {
+          callPointer('pointerScroll', [Math.round(dx * 1.4), 0]);
+        } else if (pointerGestureMode === 'scroll-both') {
           callPointer('pointerScroll', [Math.round(dx * 1.4), Math.round(dy * 1.4)]);
         } else {
           callPointer('pointerMove', [Math.round(dx * 1.8), Math.round(dy * 1.8)]);
@@ -865,7 +1031,7 @@
 
       touchpad.addEventListener('touchend', function (event) {
         event.preventDefault();
-        if (pointerTouchStart && pointerTouchStart.count === 1 && !pointerTouchMoved && !pointerTouchMulti
+        if (pointerTouchStart && pointerTouchStart.count === 1 && pointerGestureMode === 'pointer' && !pointerTouchMoved && !pointerTouchMulti
             && Date.now() - pointerTouchStart.time < 500 && event.touches.length === 0) {
           callPointer('pointerClick', []);
         }
@@ -874,6 +1040,7 @@
           pointerLastPoint = null;
           pointerTouchMoved = false;
           pointerTouchMulti = false;
+          pointerGestureMode = 'pointer';
         } else if (event.touches.length === 1) {
           pointerLastPoint = pointFromTouch(event.touches[0]);
         }
@@ -885,6 +1052,7 @@
         pointerLastPoint = null;
         pointerTouchMoved = false;
         pointerTouchMulti = false;
+        pointerGestureMode = 'pointer';
       }, { passive: false });
 
       touchpad.addEventListener('keydown', function (event) {
@@ -928,7 +1096,7 @@
       }
 
       function schedulePointerReconnect() {
-        if (!pointerWanted || !pointerWasConnected || !isRemotePanelActive() || document.hidden
+        if (!pointerWanted || !config || !config.tvConfigured || !isRemotePanelActive() || document.hidden
             || pointerReconnectTimer !== null || pointerConnecting || pointerConnected) return;
         var delay = Math.min(1000 * Math.pow(2, pointerReconnectAttempts), 10000);
         pointerReconnectAttempts += 1;
@@ -961,10 +1129,6 @@
         connectPointer();
       });
 
-      document.getElementById('pointerSelectButton').addEventListener('click', function () {
-        callPointer('pointerClick', []);
-      });
-
       var settingsButton = document.getElementById('settingsButton');
       function closeSettings() {
         if (typeof settingsDialog.close === 'function' && settingsDialog.open) settingsDialog.close();
@@ -983,6 +1147,18 @@
 
       document.querySelectorAll('[data-pointer-button]').forEach(function (button) {
         button.addEventListener('click', function () { callPointer('pointerButton', [button.getAttribute('data-pointer-button')]); });
+      });
+      remoteSelectButton.addEventListener('click', function () { callPointer('pointerClick', []); });
+      remoteControlTabs.addEventListener('click', function (event) {
+        var tab = event.target.closest('[role="tab"]');
+        if (tab === remoteDirectionTab) setRemoteControlTab('direction', false);
+        else if (tab === remoteTouchpadTab) setRemoteControlTab('touchpad', false);
+      });
+      remoteControlTabs.addEventListener('keydown', function (event) {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Home' && event.key !== 'End') return;
+        event.preventDefault();
+        var chooseTouchpad = event.key === 'End' || (event.key === 'ArrowRight' && event.target === remoteDirectionTab);
+        setRemoteControlTab(chooseTouchpad ? 'touchpad' : 'direction', true);
       });
 
       function requestImeAction(sendEnter) {
@@ -1048,7 +1224,7 @@
           clearPointerReconnect();
         } else if ((message || '').indexOf('手機 App 進入背景') === 0) {
           clearPointerReconnect();
-        } else if (wasConnected || (pointerWanted && pointerWasConnected && !pointerConnecting)) {
+        } else if (pointerWanted && !pointerConnecting) {
           schedulePointerReconnect();
         }
         updateConnection();
@@ -1456,8 +1632,10 @@
         } else if (!document.hidden && pointerWanted && isRemotePanelActive()) {
           connectPointer();
         }
+        if (!document.hidden) refreshTvPowerState();
       });
       window.addEventListener('pagehide', function () {
+        if (tvPowerPollTimer !== null) window.clearInterval(tvPowerPollTimer);
         if (audioState !== 'idle') stopPhoneAudio(true, '手機控制頁已關閉，麥克風已停止。');
         disconnectPointer(true, '控制頁已關閉，觸控板連線已停止。');
       });
@@ -1616,6 +1794,24 @@
         if (nativeConfig) renderPairing(nativeConfig);
         target.textContent = message || (success ? '已儲存。' : '操作失敗，請重試。');
         updateConnection();
+        refreshTvPowerState();
+      };
+
+      window.onNativeTvPowerState = function (id, known, isOn) {
+        if (id !== tvPowerStateRequestId) return;
+        tvPowerStateRequestId = null;
+        updateTvPowerPresentation(!!known, !!isOn);
+      };
+
+      window.onNativeTvPowerToggleResult = function (id, success, message, known, isOn) {
+        if (id !== tvPowerToggleRequestId) return;
+        tvPowerToggleRequestId = null;
+        tvPowerButton.disabled = false;
+        tvPowerFeedback.hidden = false;
+        tvPowerFeedback.textContent = message || (success ? '電視電源指令已送出。' : '電視電源操作失敗。');
+        if (known) updateTvPowerPresentation(true, !!isOn);
+        window.setTimeout(refreshTvPowerState, 2500);
+        window.setTimeout(refreshTvPowerState, 7000);
       };
 
       window.onNativeTvAppPackageResult = function (id, success, message, packageInfo) {
@@ -1707,6 +1903,7 @@
           Array.prototype.forEach.call(document.querySelectorAll('.tab-panel'), function (panel) {
             panel.hidden = panel.id !== selectedPanel;
           });
+          appConnectionPanel.hidden = selectedPanel === 'panelRemote';
           window.scrollTo(0, 0);
           if (selectedPanel === 'panelRemote' && !wasRemotePanelActive) {
             pointerReconnectAttempts = 0;
@@ -1848,7 +2045,7 @@
           updateConnection();
         }
       });
-      document.getElementById('wakeTvButton').addEventListener('click', wakeTv);
+      tvPowerButton.addEventListener('click', toggleTvPower);
       launchUrlInput.addEventListener('input', updateConnection);
       document.getElementById('toggleGeminiKeyVisibility').addEventListener('click', function () {
         var show = geminiKeyTransferInput.type === 'password';
@@ -1880,6 +2077,9 @@
       if (!audioSupported) setStatus('這個瀏覽器不支援直接音訊輸入，仍可用文字傳送。');
       updateConnection();
       loadPairingInfo();
+      refreshTvPowerState();
+      tvPowerPollTimer = window.setInterval(refreshTvPowerState, 15000);
+      if (isRemotePanelActive()) connectPointer();
     }());
   </script>
 </body>

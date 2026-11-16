@@ -245,7 +245,7 @@ final class TvPointerClient {
                 if (!returnedKey.isEmpty()) clientKey = returnedKey;
             }
             if (isConnected()) {
-                sendStatus(true, "觸控板已連線。單指滑動移動游標，點一下確認，雙指滑動捲動。", clientKey);
+                sendStatus(true, "遙控器已連線。可在方向鍵與觸控板分頁切換；觸控板右側上下捲動、底部左右捲動。", clientKey);
                 dispatchPendingImeRequests();
             } else {
                 requestPointerSocket();
@@ -394,7 +394,7 @@ final class TvPointerClient {
                     connected = true;
                     Log.d(TAG, "Pointer input socket opened");
                     timeoutHandler.removeCallbacks(timeoutRunnable);
-                    sendStatus(true, "觸控板已連線。單指滑動移動游標，點一下確認，雙指滑動捲動。", clientKey);
+                    sendStatus(true, "遙控器已連線。可在方向鍵與觸控板分頁切換；觸控板右側上下捲動、底部左右捲動。", clientKey);
                 }
 
                 @Override
